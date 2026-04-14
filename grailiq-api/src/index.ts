@@ -29,7 +29,9 @@ async function buildApp() {
 
   // Security & middleware
   await app.register(cors, {
-    origin: env.NODE_ENV === 'production' ? ['https://grailiq.com'] : true,
+    origin: env.NODE_ENV === 'production'
+        ? ['https://grailiq.com', 'https://grailiq-web.pages.dev']
+        : true,
     credentials: true,
   });
   await app.register(helmet);
@@ -70,7 +72,7 @@ async function start() {
     logger.info(`Received ${signal}. Shutting down gracefully...`);
     await app.close();
     await pool.end();
-    redis.disconnect();
+    if (redis) redis.disconnect();
     process.exit(0);
   };
 

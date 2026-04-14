@@ -3,6 +3,11 @@ import { logger } from '../lib/logger.js';
 
 /** Initialize all repeatable job schedules */
 export async function initScheduler() {
+  if (!priceUpdateQueue || !restockCheckQueue || !scoreQueue) {
+    logger.warn('Redis not available — job scheduler disabled');
+    return;
+  }
+
   logger.info('Initializing job scheduler...');
 
   // Price updates: every 15 min for hot products, every 2 hours for stable

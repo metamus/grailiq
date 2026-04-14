@@ -5,7 +5,11 @@ import { products, priceHistory, sets } from '../../db/schema.js';
 import { eq, desc, sql } from 'drizzle-orm';
 import { logger } from '../../lib/logger.js';
 
-const connection = { host: redis.options.host, port: redis.options.port };
+if (!redis) {
+  logger.info('Redis not available — score worker disabled');
+}
+
+const connection = redis ? { host: redis.options.host, port: redis.options.port } : undefined;
 
 interface PriceStats {
   avgPrice: number;
@@ -77,7 +81,6 @@ async function calculateScore(productId: string): Promise<{
     : recentAvg;
 
   const trendPct = olderAvg > 0 ? ((recentAvg - olderAvg) / olderAvg) * 100 : 0;
-  // Positive trend up to +20% = full points, negative = penalty
   const trendScore = Math.max(0, Math.min(100, 50 + trendPct * 2.5));
 
   // ── MSRP Premium Score (25%) ──
@@ -85,16 +88,12 @@ async function calculateScore(productId: string): Promise<{
   if (msrp > 0) {
     const premium = ((latestPrice - msrp) / msrp) * 100;
     if (premium < 0) {
-      // Below MSRP = great deal
       msrpScore = Math.min(100, 80 + Math.abs(premium));
     } else if (premium < 30) {
-      // 0-30% above MSRP = still reasonable
       msrpScore = 70 - premium;
     } else if (premium < 100) {
-      // 30-100% above = getting pricey
       msrpScore = 40 - (premium - 30) * 0.3;
     } else {
-      // 100%+ above = very overpriced (unless OOP)
       msrpScore = Math.max(10, 20 - (premium - 100) * 0.1);
     }
   }
@@ -103,12 +102,10 @@ async function calculateScore(productId: string): Promise<{
   const mean = prices.reduce((a, b) => a + b, 0) / prices.length;
   const variance = prices.reduce((a, p) => a + Math.pow(p - mean, 2), 0) / prices.length;
   const stdDev = Math.sqrt(variance);
-  const cv = mean > 0 ? (stdDev / mean) * 100 : 0; // Coefficient of variation
-  // Low volatility (<5% CV) = 100, high (>30%) = 0
+  const cv = mean > 0 ? (stdDev / mean) * 100 : 0;
   const volatilityScore = Math.max(0, Math.min(100, 100 - cv * 3));
 
   // ── Demand Score (15%) ──
-  // More data points = more market activity
   const demandScore = Math.min(100, (history.length / 100) * 100);
 
   // ── Scarcity Score (10%) ──
@@ -160,44 +157,48 @@ async function calculateScore(productId: string): Promise<{
 }
 
 /** Process score calculation jobs */
-export const scoreWorker = new Worker('score-calculations', async (job: Job) => {
-  const startTime = Date.now();
-  logger.info({ jobId: job.id }, 'Starting score recalculation');
+export const scoreWorker = connection
+  ? new Worker('score-calculations', async (job: Job) => {
+      const startTime = Date.now();
+      logger.info({ jobId: job.id }, 'Starting score recalculation');
 
-  try {
-    const allProducts = await db.select({ id: products.id }).from(products);
-    let updated = 0;
-
-    for (const product of allProducts) {
       try {
-        const { score, signal, rationale } = await calculateScore(product.id);
+        const allProducts = await db.select({ id: products.id }).from(products);
+        let updated = 0;
 
-        await db
-          .update(products)
-          .set({
-            grailiqScore: score.toFixed(1),
-            investmentSignal: signal,
-            signalRationale: rationale,
-            scoreUpdatedAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .where(eq(products.id, product.id));
+        for (const product of allProducts) {
+          try {
+            const { score, signal, rationale } = await calculateScore(product.id);
 
-        updated++;
+            await db
+              .update(products)
+              .set({
+                grailiqScore: score.toFixed(1),
+                investmentSignal: signal,
+                signalRationale: rationale,
+                scoreUpdatedAt: new Date(),
+                updatedAt: new Date(),
+              })
+              .where(eq(products.id, product.id));
+
+            updated++;
+          } catch (error) {
+            logger.warn({ productId: product.id, error }, 'Failed to score product');
+          }
+        }
+
+        const duration = Date.now() - startTime;
+        logger.info({ jobId: job.id, updated, duration }, 'Score recalculation complete');
+        return { updated, duration };
       } catch (error) {
-        logger.warn({ productId: product.id, error }, 'Failed to score product');
+        logger.error({ jobId: job.id, error }, 'Score recalculation failed');
+        throw error;
       }
-    }
+    }, { connection, concurrency: 1 })
+  : null;
 
-    const duration = Date.now() - startTime;
-    logger.info({ jobId: job.id, updated, duration }, 'Score recalculation complete');
-    return { updated, duration };
-  } catch (error) {
-    logger.error({ jobId: job.id, error }, 'Score recalculation failed');
-    throw error;
-  }
-}, { connection, concurrency: 1 });
-
-scoreWorker.on('failed', (job, err) => {
-  logger.error({ jobId: job?.id, error: err.message }, 'Score worker job failed');
-});
+if (scoreWorker) {
+  scoreWorker.on('failed', (job, err) => {
+    logger.error({ jobId: job?.id, error: err.message }, 'Score worker job failed');
+  });
+}
