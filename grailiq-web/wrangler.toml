@@ -1,0 +1,16 @@
+# Cloudflare Pages configuration for GrailIQ frontend
+name = "grailiq"
+compatibility_date = "2024-01-01"
+
+[build]
+command = "npm run build"
+cwd = "."
+
+[build.upload]
+dir = "dist"
+
+# SPA routing — serve index.html for all non-asset paths
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200
