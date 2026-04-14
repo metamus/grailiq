@@ -5,87 +5,71 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  TextInput,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
 import { colors, spacing, fontSize, borderRadius } from '../theme/colors';
 import { supabase } from '../lib/supabase';
-import * as WebBrowser from 'expo-web-browser';
-import { makeRedirectUri } from 'expo-auth-session';
+
+type AuthMode = 'sign_in' | 'sign_up';
 
 export function SignInScreen() {
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<AuthMode>('sign_in');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-  const signInWithGoogle = async () => {
-    setLoading(true);
-    try {
-      const redirectTo = makeRedirectUri();
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo,
-          skipBrowserRedirect: true,
-        },
-      });
-
-      if (error) throw error;
-      if (data.url) {
-        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-        if (result.type === 'success') {
-          const url = new URL(result.url);
-          const params = new URLSearchParams(url.hash.substring(1));
-          const accessToken = params.get('access_token');
-          const refreshToken = params.get('refresh_token');
-          if (accessToken && refreshToken) {
-            await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Sign in error:', error);
-    } finally {
-      setLoading(false);
+  const handleEmailAuth = async () => {
+    if (!email || !password) {
+      Alert.alert('Missing fields', 'Please enter both email and password.');
+      return;
     }
-  };
+    if (password.length < 6) {
+      Alert.alert('Weak password', 'Password must be at least 6 characters.');
+      return;
+    }
 
-  const signInWithApple = async () => {
     setLoading(true);
     try {
-      const redirectTo = makeRedirectUri();
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'apple',
-        options: {
-          redirectTo,
-          skipBrowserRedirect: true,
-        },
-      });
-
-      if (error) throw error;
-      if (data.url) {
-        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-        if (result.type === 'success') {
-          const url = new URL(result.url);
-          const params = new URLSearchParams(url.hash.substring(1));
-          const accessToken = params.get('access_token');
-          const refreshToken = params.get('refresh_token');
-          if (accessToken && refreshToken) {
-            await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-          }
-        }
+      if (mode === 'sign_up') {
+        const { error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+        });
+        if (error) throw error;
+        Alert.alert(
+          'Check your email',
+          'We sent you a confirmation link. Please verify your email to continue.',
+        );
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+        if (error) throw error;
       }
-    } catch (error) {
-      console.error('Sign in error:', error);
+    } catch (error: any) {
+      Alert.alert('Auth error', error.message || 'Something went wrong');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Logo */}
         <Text style={styles.logo}>GrailIQ</Text>
-        <Text style={styles.tagline}>
-          Pokemon TCG Price Intelligence
-        </Text>
+        <Text style={styles.tagline}>Pokemon TCG Price Intelligence</Text>
         <Text style={styles.subtitle}>
           Track prices, manage your sealed collection, and get restock alerts.
         </Text>
@@ -98,30 +82,55 @@ export function SignInScreen() {
           <FeatureRow emoji="🧠" text="GrailIQ Score — AI-powered investment signals" />
         </View>
 
-        {/* Auth Buttons */}
-        <View style={styles.authButtons}>
+        {/* Email/Password Form */}
+        <View style={styles.form}>
+          <TextInput
+            style={styles.input}
+            placeholder="Email address"
+            placeholderTextColor={colors.textMuted}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor={colors.textMuted}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoCapitalize="none"
+          />
+
           <TouchableOpacity
-            style={styles.googleButton}
-            onPress={signInWithGoogle}
+            style={styles.primaryButton}
+            onPress={handleEmailAuth}
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color={colors.black} />
+              <ActivityIndicator color={colors.white} />
             ) : (
-              <Text style={styles.googleText}>Continue with Google</Text>
+              <Text style={styles.primaryButtonText}>
+                {mode === 'sign_in' ? 'Sign In' : 'Create Account'}
+              </Text>
             )}
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.appleButton}
-            onPress={signInWithApple}
-            disabled={loading}
+            onPress={() => setMode(mode === 'sign_in' ? 'sign_up' : 'sign_in')}
+            style={styles.toggleButton}
           >
-            <Text style={styles.appleText}>Continue with Apple</Text>
+            <Text style={styles.toggleText}>
+              {mode === 'sign_in'
+                ? "Don't have an account? Sign Up"
+                : 'Already have an account? Sign In'}
+            </Text>
           </TouchableOpacity>
         </View>
-      </View>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -138,9 +147,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    justifyContent: 'center',
   },
-  content: {
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
     padding: spacing['3xl'],
   },
   logo: {
@@ -163,7 +173,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.base,
     textAlign: 'center',
     lineHeight: 22,
-    marginBottom: spacing['3xl'],
+    marginBottom: spacing['2xl'],
   },
   features: {
     marginBottom: spacing['3xl'],
@@ -184,31 +194,36 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 20,
   },
-  authButtons: {
+  form: {
     gap: spacing.md,
   },
-  googleButton: {
-    backgroundColor: colors.white,
-    padding: spacing.lg,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-  },
-  googleText: {
-    color: colors.black,
-    fontSize: fontSize.base,
-    fontWeight: '700',
-  },
-  appleButton: {
-    backgroundColor: colors.black,
-    padding: spacing.lg,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
+  input: {
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    padding: spacing.lg,
+    color: colors.text,
+    fontSize: fontSize.base,
   },
-  appleText: {
+  primaryButton: {
+    backgroundColor: colors.primary,
+    padding: spacing.lg,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    marginTop: spacing.sm,
+  },
+  primaryButtonText: {
     color: colors.white,
     fontSize: fontSize.base,
     fontWeight: '700',
+  },
+  toggleButton: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+  },
+  toggleText: {
+    color: colors.primaryLight,
+    fontSize: fontSize.sm,
   },
 });
