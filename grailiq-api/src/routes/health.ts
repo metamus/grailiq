@@ -10,15 +10,18 @@ export async function healthRoutes(app: FastifyInstance) {
       checkRedisConnection(),
     ]);
 
-    const status = dbOk && redisOk ? 'ok' : 'degraded';
+    // API is healthy as long as database is reachable
+    // Redis being down means degraded (no queues) but not unhealthy
+    const healthy = dbOk;
+    const status = dbOk && redisOk ? 'ok' : dbOk ? 'degraded' : 'unhealthy';
 
-    return reply.status(dbOk && redisOk ? 200 : 503).send({
+    return reply.status(healthy ? 200 : 503).send({
       status,
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       services: {
         database: dbOk ? 'connected' : 'error',
-        redis: redisOk ? 'connected' : 'error',
+        redis: redisOk ? 'connected' : 'unavailable',
       },
     });
   });

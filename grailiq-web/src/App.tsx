@@ -1,11 +1,12 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Spinner } from '@/components/ui/Spinner';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/useAuthStore';
 
 // Lazy-loaded pages for code-splitting
+const Landing = lazy(() => import('@/pages/Landing'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Sets = lazy(() => import('@/pages/Sets'));
 const SetDetail = lazy(() => import('@/pages/SetDetail'));
@@ -23,9 +24,39 @@ function PageLoader() {
   );
 }
 
+/** Protected route wrapper — requires authentication */
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { session, isLoading } = useAuthStore();
+
+  if (isLoading) {
+    return <PageLoader />;
+  }
+
+  if (!session) {
+    return <Navigate to="/sign-in" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+/** Public-only route — redirects to /app if already logged in */
+function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
+  const { session, isLoading } = useAuthStore();
+
+  if (isLoading) {
+    return <PageLoader />;
+  }
+
+  if (session) {
+    return <Navigate to="/app" replace />;
+  }
+
+  return <>{children}</>;
+}
+
 /** Root application component with Supabase auth and routing */
 export default function App() {
-  const { setUser, setSession, setLoading } = useAuthStore();
+  const { setUser, setSession, setLoading, isLoading } = useAuthStore();
 
   useEffect(() => {
     // Get initial session
@@ -44,11 +75,33 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, [setUser, setSession, setLoading]);
 
+  if (isLoading) {
+    return <PageLoader />;
+  }
+
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
+        {/* Public routes */}
+        <Route
+          index
+          element={
+            <PublicOnlyRoute>
+              <Landing />
+            </PublicOnlyRoute>
+          }
+        />
         <Route path="/sign-in" element={<SignIn />} />
-        <Route element={<AppLayout />}>
+
+        {/* Protected app routes */}
+        <Route
+          path="/app"
+          element={
+            <ProtectedRoute>
+              <AppLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<Dashboard />} />
           <Route path="sets" element={<Sets />} />
           <Route path="sets/:id" element={<SetDetail />} />
@@ -57,6 +110,9 @@ export default function App() {
           <Route path="alerts" element={<Alerts />} />
           <Route path="pricing" element={<Pricing />} />
         </Route>
+
+        {/* Catch-all: send to landing or app */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
   );

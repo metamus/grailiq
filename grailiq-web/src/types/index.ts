@@ -39,15 +39,52 @@ export interface PricePoint {
 
 export interface PortfolioItem {
   id: string;
-  userId: string;
   productId: string;
   quantity: number;
   purchasePrice: string;
   purchaseDate: string | null;
   source: string | null;
   notes: string | null;
-  product?: Product;
-  currentPrice?: string;
+  createdAt: string;
+  product: {
+    id: string;
+    name: string;
+    type: Product['type'];
+    imageUrl: string | null;
+    msrp: string | null;
+    grailiqScore: string | null;
+    investmentSignal: Product['investmentSignal'];
+  };
+  currentPrice: string;
+  currentValue: string;
+  unrealizedPnl: string;
+  unrealizedPnlPct: string;
+}
+
+export interface PortfolioSummary {
+  totalValue: number | string;
+  costBasis: number | string;
+  unrealizedPnl: number | string;
+  unrealizedPnlPct: number | string;
+  holdings: number;
+  uniqueProducts: number;
+  bestHolding: {
+    id: string;
+    name: string;
+    pnl: string;
+    pnlPct: string;
+  } | null;
+  worstHolding: {
+    id: string;
+    name: string;
+    pnl: string;
+    pnlPct: string;
+  } | null;
+}
+
+export interface PortfolioResponse {
+  data: PortfolioItem[];
+  summary: PortfolioSummary;
 }
 
 export interface User {
@@ -62,11 +99,11 @@ export interface User {
 
 export interface AlertSubscription {
   id: string;
-  userId: string;
   productId: string;
   retailer: 'pokemon_center' | 'amazon' | 'target' | 'walmart' | 'best_buy' | 'all';
   isActive: boolean;
-  product?: Product;
+  createdAt: string;
+  product: Product;
 }
 
 export interface GrailIQScore {

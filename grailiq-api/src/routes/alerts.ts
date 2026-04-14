@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { db } from '../config/database.js';
-import { alertSubscriptions, products, sets } from '../db/schema.js';
-import { eq, and } from 'drizzle-orm';
+import { alertSubscriptions, products } from '../db/schema.js';
+import { eq, and, desc } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth.js';
 import { z } from 'zod';
 
@@ -13,33 +13,40 @@ const createAlertSchema = z.object({
     .default('all'),
 });
 
+const toggleBodySchema = z.object({
+  isActive: z.boolean(),
+});
+
 /** Register alert subscription API routes */
 export async function alertRoutes(app: FastifyInstance) {
   // All alert routes require authentication
   app.addHook('preHandler', requireAuth);
 
-  /** Get user's active alerts */
+  /**
+   * GET /alerts
+   *
+   * Returns the user's alert subscriptions with the joined product object
+   * (nested, not flattened) so web and mobile clients can render rich cards.
+   */
   app.get('/alerts', async (request, reply) => {
     const user = (request as any).user;
     if (!user) return reply.status(401).send({ error: 'User not found' });
 
-    const alerts = await db
+    const rows = await db
       .select({
         id: alertSubscriptions.id,
         productId: alertSubscriptions.productId,
         retailer: alertSubscriptions.retailer,
         isActive: alertSubscriptions.isActive,
         createdAt: alertSubscriptions.createdAt,
-        productName: products.name,
-        productType: products.type,
-        setName: sets.name,
+        product: products,
       })
       .from(alertSubscriptions)
-      .leftJoin(products, eq(alertSubscriptions.productId, products.id))
-      .leftJoin(sets, eq(products.setId, sets.id))
-      .where(eq(alertSubscriptions.userId, user.id));
+      .innerJoin(products, eq(alertSubscriptions.productId, products.id))
+      .where(eq(alertSubscriptions.userId, user.id))
+      .orderBy(desc(alertSubscriptions.createdAt));
 
-    return reply.send({ data: alerts });
+    return reply.send({ data: rows });
   });
 
   /** Create a new restock alert */
@@ -82,14 +89,45 @@ export async function alertRoutes(app: FastifyInstance) {
     return reply.status(201).send({ data: alert });
   });
 
-  /** Toggle alert active/inactive */
+  /**
+   * PATCH /alerts/:id
+   *
+   * Body: `{ isActive: boolean }` — set the alert's active state explicitly.
+   * Clients can use this to pause or resume without needing to know current state.
+   */
+  app.patch<{ Params: { id: string } }>('/alerts/:id', async (request, reply) => {
+    const user = (request as any).user;
+    if (!user) return reply.status(401).send({ error: 'User not found' });
+
+    const { id } = request.params;
+    const parsed = toggleBodySchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'Validation failed', details: parsed.error.issues });
+    }
+
+    const [updated] = await db
+      .update(alertSubscriptions)
+      .set({ isActive: parsed.data.isActive })
+      .where(and(eq(alertSubscriptions.id, id), eq(alertSubscriptions.userId, user.id)))
+      .returning();
+
+    if (!updated) {
+      return reply.status(404).send({ error: 'Alert not found' });
+    }
+
+    return reply.send({ data: updated });
+  });
+
+  /**
+   * PATCH /alerts/:id/toggle — legacy toggle endpoint, kept for back-compat.
+   * Flips the active state without needing a body.
+   */
   app.patch<{ Params: { id: string } }>('/alerts/:id/toggle', async (request, reply) => {
     const user = (request as any).user;
     if (!user) return reply.status(401).send({ error: 'User not found' });
 
     const { id } = request.params;
 
-    // Fetch current state
     const [current] = await db
       .select()
       .from(alertSubscriptions)

@@ -3,7 +3,11 @@ import { redis } from '../../config/redis.js';
 import { logger } from '../../lib/logger.js';
 import { env } from '../../config/env.js';
 
-const connection = { host: redis.options.host, port: redis.options.port };
+if (!redis) {
+  logger.info('Redis not available — notification worker disabled');
+}
+
+const connection = redis ? { host: redis.options.host, port: redis.options.port } : undefined;
 
 interface RestockNotificationPayload {
   type: 'restock';
@@ -127,43 +131,47 @@ function buildRestockEmail(payload: RestockNotificationPayload): { subject: stri
 }
 
 /** Process notification jobs */
-export const notificationWorker = new Worker(
-  'notifications',
-  async (job: Job<NotificationPayload>) => {
-    const payload = job.data;
-    logger.info({ jobId: job.id, type: payload.type, userId: payload.userId }, 'Processing notification');
+export const notificationWorker = connection && redis
+  ? new Worker(
+      'notifications',
+      async (job: Job<NotificationPayload>) => {
+        const payload = job.data;
+        logger.info({ jobId: job.id, type: payload.type, userId: payload.userId }, 'Processing notification');
 
-    switch (payload.type) {
-      case 'restock': {
-        const { subject, html } = buildRestockEmail(payload);
+        switch (payload.type) {
+          case 'restock': {
+            const { subject, html } = buildRestockEmail(payload);
 
-        // Deduplicate: don't send the same alert twice within 1 hour
-        const dedupeKey = `notif:sent:${payload.userId}:${payload.productId}:${payload.retailer}`;
-        const alreadySent = await redis.get(dedupeKey);
+            // Deduplicate: don't send the same alert twice within 1 hour
+            const dedupeKey = `notif:sent:${payload.userId}:${payload.productId}:${payload.retailer}`;
+            const alreadySent = await redis!.get(dedupeKey);
 
-        if (alreadySent) {
-          logger.info({ dedupeKey }, 'Notification already sent recently — skipping');
-          return { sent: false, reason: 'deduplicated' };
+            if (alreadySent) {
+              logger.info({ dedupeKey }, 'Notification already sent recently — skipping');
+              return { sent: false, reason: 'deduplicated' };
+            }
+
+            const sent = await sendEmail(payload.userEmail, subject, html);
+
+            if (sent) {
+              // Mark as sent for 1 hour
+              await redis!.set(dedupeKey, '1', 'EX', 3600);
+            }
+
+            return { sent, type: 'restock', retailer: payload.retailer };
+          }
+
+          default:
+            logger.warn({ type: (payload as any).type }, 'Unknown notification type');
+            return { sent: false, reason: 'unknown_type' };
         }
+      },
+      { connection, concurrency: 3 },
+    )
+  : null;
 
-        const sent = await sendEmail(payload.userEmail, subject, html);
-
-        if (sent) {
-          // Mark as sent for 1 hour
-          await redis.set(dedupeKey, '1', 'EX', 3600);
-        }
-
-        return { sent, type: 'restock', retailer: payload.retailer };
-      }
-
-      default:
-        logger.warn({ type: (payload as any).type }, 'Unknown notification type');
-        return { sent: false, reason: 'unknown_type' };
-    }
-  },
-  { connection, concurrency: 3 },
-);
-
-notificationWorker.on('failed', (job, err) => {
-  logger.error({ jobId: job?.id, error: err.message }, 'Notification worker job failed');
-});
+if (notificationWorker) {
+  notificationWorker.on('failed', (job, err) => {
+    logger.error({ jobId: job?.id, error: err.message }, 'Notification worker job failed');
+  });
+}

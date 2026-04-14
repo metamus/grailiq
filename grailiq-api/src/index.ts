@@ -14,6 +14,7 @@ import { alertRoutes } from './routes/alerts.js';
 import { adminRoutes } from './routes/admin.js';
 import { pool } from './config/database.js';
 import { redis } from './config/redis.js';
+import { initJobs } from './jobs/init.js';
 
 /** Build and configure the Fastify application */
 async function buildApp() {
@@ -29,7 +30,9 @@ async function buildApp() {
 
   // Security & middleware
   await app.register(cors, {
-    origin: env.NODE_ENV === 'production' ? ['https://grailiq.com'] : true,
+    origin: env.NODE_ENV === 'production'
+        ? ['https://grailiq.com', 'https://grailiq-web.pages.dev']
+        : true,
     credentials: true,
   });
   await app.register(helmet);
@@ -63,6 +66,9 @@ async function buildApp() {
 
 /** Start the server with graceful shutdown */
 async function start() {
+  // Initialize job system (workers and scheduler)
+  await initJobs();
+
   const app = await buildApp();
 
   // Graceful shutdown
@@ -70,7 +76,7 @@ async function start() {
     logger.info(`Received ${signal}. Shutting down gracefully...`);
     await app.close();
     await pool.end();
-    redis.disconnect();
+    if (redis) redis.disconnect();
     process.exit(0);
   };
 

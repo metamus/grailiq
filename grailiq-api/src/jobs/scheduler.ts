@@ -3,6 +3,11 @@ import { logger } from '../lib/logger.js';
 
 /** Initialize all repeatable job schedules */
 export async function initScheduler() {
+  if (!priceUpdateQueue || !restockCheckQueue || !scoreQueue) {
+    logger.warn('Redis not available — job scheduler disabled');
+    return;
+  }
+
   logger.info('Initializing job scheduler...');
 
   // Price updates: every 15 min for hot products, every 2 hours for stable
@@ -19,9 +24,10 @@ export async function initScheduler() {
     repeat: { pattern: '* * * * *' }, // every minute
   });
 
-  // Score recalculation: weekly on Sunday at 2 AM UTC
-  await scoreQueue.add('recalculate-scores', {}, {
-    repeat: { pattern: '0 2 * * 0' },
+  // Score recalculation: daily at 2 AM UTC. Hot-tier price updates also
+  // enqueue on-demand recalculations so fresh prices get fresh signals.
+  await scoreQueue.add('recalculate-scores-daily', {}, {
+    repeat: { pattern: '0 2 * * *' },
   });
 
   logger.info('Job scheduler initialized with repeatable jobs');
