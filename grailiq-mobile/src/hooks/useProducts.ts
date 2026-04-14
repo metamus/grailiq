@@ -15,7 +15,7 @@ export function useProducts() {
     queryKey: ['products'],
     queryFn: async () => {
       const { data } = await api.get('/products');
-      return data;
+      return data?.data ?? [];
     },
   });
 }
@@ -25,7 +25,7 @@ export function useProduct(id: string) {
     queryKey: ['products', id],
     queryFn: async () => {
       const { data } = await api.get(`/products/${id}`);
-      return data;
+      return data?.data ?? data;
     },
     enabled: !!id,
   });
@@ -38,7 +38,7 @@ export function usePriceHistory(productId: string, timeRange: TimeRange = '30d')
       const days = DAYS_MAP[timeRange];
       const params = days ? { days } : {};
       const { data } = await api.get(`/products/${productId}/prices`, { params });
-      return data;
+      return data?.data ?? [];
     },
     enabled: !!productId,
   });

@@ -7,7 +7,7 @@ export function useSets() {
     queryKey: ['sets'],
     queryFn: async () => {
       const { data } = await api.get('/sets');
-      return data;
+      return data?.data ?? [];
     },
   });
 }
@@ -17,7 +17,7 @@ export function useSet(id: string) {
     queryKey: ['sets', id],
     queryFn: async () => {
       const { data } = await api.get(`/sets/${id}`);
-      return data;
+      return data?.data ?? data;
     },
     enabled: !!id,
   });

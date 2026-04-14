@@ -7,7 +7,7 @@ export function usePortfolio() {
     queryKey: ['portfolio'],
     queryFn: async () => {
       const { data } = await api.get('/portfolio');
-      return data;
+      return data?.data ?? [];
     },
   });
 }
@@ -25,7 +25,7 @@ export function useAddPortfolioItem() {
       notes?: string;
     }) => {
       const { data } = await api.post('/portfolio', item);
-      return data;
+      return data?.data ?? data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portfolio'] });

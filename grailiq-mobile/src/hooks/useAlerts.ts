@@ -7,7 +7,7 @@ export function useAlerts() {
     queryKey: ['alerts'],
     queryFn: async () => {
       const { data } = await api.get('/alerts');
-      return data;
+      return data?.data ?? [];
     },
   });
 }
@@ -18,7 +18,7 @@ export function useCreateAlert() {
   return useMutation({
     mutationFn: async (alert: { productId: string; retailer: string }) => {
       const { data } = await api.post('/alerts', alert);
-      return data;
+      return data?.data ?? data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alerts'] });
@@ -32,7 +32,7 @@ export function useToggleAlert() {
   return useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
       const { data } = await api.patch(`/alerts/${id}`, { isActive });
-      return data;
+      return data?.data ?? data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alerts'] });
