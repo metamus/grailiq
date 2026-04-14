@@ -142,6 +142,25 @@ CREATE TABLE alert_subscriptions (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Retailer-specific product mappings (URL + SKU + last-seen state).
+-- Used by the restock worker to do real stock detection and fire
+-- notifications only on out-of-stock -> in-stock transitions.
+CREATE TABLE retailer_products (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  retailer retailer NOT NULL,
+  url TEXT NOT NULL,
+  sku VARCHAR(100),
+  last_in_stock BOOLEAN NOT NULL DEFAULT FALSE,
+  last_checked_at TIMESTAMP WITH TIME ZONE,
+  last_price NUMERIC(10, 2),
+  last_error TEXT,
+  is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (product_id, retailer, url)
+);
+
 -- ──────────────────────────────────────────────
 -- TimescaleDB Hypertable Configuration
 -- ──────────────────────────────────────────────
@@ -181,6 +200,11 @@ CREATE INDEX idx_portfolio_items_user_product ON portfolio_items(user_id, produc
 CREATE INDEX idx_alert_subscriptions_user_id ON alert_subscriptions(user_id);
 CREATE INDEX idx_alert_subscriptions_product_id ON alert_subscriptions(product_id);
 CREATE INDEX idx_alert_subscriptions_is_active ON alert_subscriptions(is_active);
+
+-- Retailer products indexes
+CREATE INDEX idx_retailer_products_product_id ON retailer_products(product_id);
+CREATE INDEX idx_retailer_products_retailer ON retailer_products(retailer);
+CREATE INDEX idx_retailer_products_enabled ON retailer_products(is_enabled) WHERE is_enabled = TRUE;
 
 -- ──────────────────────────────────────────────
 -- Constraints

@@ -20,6 +20,11 @@ const envSchema = z.object({
   SENTRY_DSN: z.string().optional(),
   PROXY_URL: z.string().optional(),
   POKEMON_TCG_API_KEY: z.string().optional(),
+
+  // Retailer stock-check credentials
+  TARGET_REDSKY_KEY: z.string().optional(),
+  TARGET_STORE_ID: z.string().optional(),
+  BEST_BUY_API_KEY: z.string().optional(),
 });
 
 /** Validated environment configuration */

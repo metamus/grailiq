@@ -159,6 +159,34 @@ export const alertSubscriptions = pgTable('alert_subscriptions', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * Retailer-specific product mappings.
+ *
+ * Each row maps one of our canonical `products` to a specific retailer's
+ * product listing (URL + SKU/TCIN/ASIN). The restock worker uses these rows
+ * to actually hit retailer endpoints and track stock transitions.
+ *
+ * `lastInStock` / `lastCheckedAt` are used for change detection — a
+ * notification is only fired when a product transitions from
+ * out-of-stock → in-stock, not on every successful check.
+ */
+export const retailerProducts = pgTable('retailer_products', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  productId: uuid('product_id')
+    .notNull()
+    .references(() => products.id),
+  retailer: retailerEnum('retailer').notNull(),
+  url: text('url').notNull(),
+  sku: varchar('sku', { length: 100 }),
+  lastInStock: boolean('last_in_stock').notNull().default(false),
+  lastCheckedAt: timestamp('last_checked_at', { withTimezone: true }),
+  lastPrice: decimal('last_price', { precision: 10, scale: 2 }),
+  lastError: text('last_error'),
+  isEnabled: boolean('is_enabled').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ──────────────────────────────────────────────
 // Relations
 // ──────────────────────────────────────────────
@@ -191,4 +219,8 @@ export const portfolioItemsRelations = relations(portfolioItems, ({ one }) => ({
 export const alertSubscriptionsRelations = relations(alertSubscriptions, ({ one }) => ({
   user: one(users, { fields: [alertSubscriptions.userId], references: [users.id] }),
   product: one(products, { fields: [alertSubscriptions.productId], references: [products.id] }),
+}));
+
+export const retailerProductsRelations = relations(retailerProducts, ({ one }) => ({
+  product: one(products, { fields: [retailerProducts.productId], references: [products.id] }),
 }));
