@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { Mail, Lock } from 'lucide-react';
+import { Mail, Lock, ArrowLeft } from 'lucide-react';
 
 type AuthMode = 'signin' | 'signup';
 
@@ -40,7 +40,7 @@ export default function SignIn() {
 
       // Redirect on successful sign in
       if (mode === 'signin') {
-        navigate('/');
+        navigate('/app');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed');
@@ -50,14 +50,23 @@ export default function SignIn() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-grailiq-surface to-gray-50 px-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-grailiq-dark px-4 relative">
+      {/* Background glow */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute top-1/4 left-1/2 h-[500px] w-[600px] -translate-x-1/2 rounded-full bg-grailiq-purple/8 blur-[120px]" />
+      </div>
+      <div className="w-full max-w-md relative z-10">
+        {/* Back link */}
+        <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors mb-8">
+          <ArrowLeft size={16} />
+          Back to home
+        </Link>
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold">
+          <h1 className="text-3xl sm:text-4xl font-bold text-white">
             Grail<span className="text-grailiq-purple">IQ</span>
           </h1>
-          <p className="text-gray-500 mt-2">Know what your grails are worth</p>
+          <p className="text-gray-400 mt-2">Know what your grails are worth</p>
         </div>
 
         {/* Auth Card */}
@@ -152,7 +161,7 @@ export default function SignIn() {
         </Card>
 
         {/* Footer */}
-        <p className="text-center text-xs text-gray-400 mt-6">
+        <p className="text-center text-xs text-gray-500 mt-6">
           By signing in, you agree to our Terms of Service and Privacy Policy.
         </p>
       </div>

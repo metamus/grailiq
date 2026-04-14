@@ -5,11 +5,11 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { supabase } from '@/lib/supabase';
 
 const navItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/sets', icon: Package, label: 'Sets' },
-  { to: '/portfolio', icon: Briefcase, label: 'Portfolio' },
-  { to: '/alerts', icon: Bell, label: 'Alerts' },
-  { to: '/pricing', icon: CreditCard, label: 'Pricing' },
+  { to: '/app', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/app/sets', icon: Package, label: 'Sets' },
+  { to: '/app/portfolio', icon: Briefcase, label: 'Portfolio' },
+  { to: '/app/alerts', icon: Bell, label: 'Alerts' },
+  { to: '/app/pricing', icon: CreditCard, label: 'Pricing' },
 ];
 
 /** Main application layout with sidebar and mobile bottom nav */
@@ -40,7 +40,7 @@ export function AppLayout() {
             <NavLink
               key={to}
               to={to}
-              end={to === '/'}
+              end={to === '/app'}
               className={({ isActive }) =>
                 cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
@@ -87,7 +87,7 @@ export function AppLayout() {
           <NavLink
             key={to}
             to={to}
-            end={to === '/'}
+            end={to === '/app'}
             className={({ isActive }) =>
               cn(
                 'flex flex-col items-center gap-0.5 text-xs font-medium py-1 px-2',

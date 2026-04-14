@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/useAuthStore';
 
 // Lazy-loaded pages for code-splitting
+const Landing = lazy(() => import('@/pages/Landing'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Sets = lazy(() => import('@/pages/Sets'));
 const SetDetail = lazy(() => import('@/pages/SetDetail'));
@@ -33,6 +34,21 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!session) {
     return <Navigate to="/sign-in" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+/** Public-only route — redirects to /app if already logged in */
+function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
+  const { session, isLoading } = useAuthStore();
+
+  if (isLoading) {
+    return <PageLoader />;
+  }
+
+  if (session) {
+    return <Navigate to="/app" replace />;
   }
 
   return <>{children}</>;
@@ -66,8 +82,20 @@ export default function App() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
-        <Route path="/sign-in" element={<SignIn />} />
+        {/* Public routes */}
         <Route
+          index
+          element={
+            <PublicOnlyRoute>
+              <Landing />
+            </PublicOnlyRoute>
+          }
+        />
+        <Route path="/sign-in" element={<SignIn />} />
+
+        {/* Protected app routes */}
+        <Route
+          path="/app"
           element={
             <ProtectedRoute>
               <AppLayout />
@@ -82,6 +110,8 @@ export default function App() {
           <Route path="alerts" element={<Alerts />} />
           <Route path="pricing" element={<Pricing />} />
         </Route>
+
+        {/* Catch-all: send to landing or app */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
