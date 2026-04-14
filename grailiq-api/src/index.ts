@@ -14,6 +14,7 @@ import { alertRoutes } from './routes/alerts.js';
 import { adminRoutes } from './routes/admin.js';
 import { pool } from './config/database.js';
 import { redis } from './config/redis.js';
+import { initJobs } from './jobs/init.js';
 
 /** Build and configure the Fastify application */
 async function buildApp() {
@@ -65,6 +66,9 @@ async function buildApp() {
 
 /** Start the server with graceful shutdown */
 async function start() {
+  // Initialize job system (workers and scheduler)
+  await initJobs();
+
   const app = await buildApp();
 
   // Graceful shutdown
