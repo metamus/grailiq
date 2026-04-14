@@ -81,9 +81,44 @@ export default function Portfolio() {
             </p>
           </div>
           <div className="flex gap-2 flex-shrink-0">
-            <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 backdrop-blur-sm border border-white/10 text-sm font-medium text-white transition-all">
+            <button
+              onClick={() => {
+                const csv = [
+                  ['Product', 'Type', 'Set', 'Quantity', 'Cost Basis', 'Current Price', 'Current Value', 'P&L', 'P&L %'],
+                  ...items.map((item) => [
+                    item.product.name,
+                    item.product.type,
+                    '', // set name not in item
+                    item.quantity.toString(),
+                    item.purchasePrice,
+                    item.currentPrice || '',
+                    item.currentValue || '',
+                    item.unrealizedPnl || '',
+                    item.unrealizedPnlPct || '',
+                  ]),
+                ]
+                  .map((row) =>
+                    row
+                      .map((cell) => {
+                        const str = String(cell);
+                        return str.includes(',') || str.includes('"') ? `"${str.replace(/"/g, '""')}"` : str;
+                      })
+                      .join(','),
+                  )
+                  .join('\n');
+
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `portfolio-${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 backdrop-blur-sm border border-white/10 text-sm font-medium text-white transition-all"
+            >
               <Download className="h-4 w-4" />
-              Export
+              Export CSV
             </button>
             <Link
               to="/sets"
@@ -110,7 +145,7 @@ export default function Portfolio() {
               Total Value
             </p>
             <div className="flex items-baseline gap-3 mt-2 flex-wrap">
-              <span className="text-5xl font-black text-white tracking-tight tabular-nums">
+              <span className="text-5xl font-black text-white tracking-tight tabular-nums font-serif italic">
                 {formatPrice(totalValue)}
               </span>
               {holdings > 0 && (

@@ -4,6 +4,7 @@ import { useSets } from '@/hooks/useSets';
 import { useProducts } from '@/hooks/useProducts';
 import { useMovers } from '@/hooks/useMovers';
 import { formatPrice } from '@/lib/utils';
+import { ScoreRing } from '@/components/ScoreRing';
 import { Sparkline } from '@/components/charts/Sparkline';
 import { generateTrend, signalToBias, signalToColor } from '@/lib/sparkData';
 import {
@@ -35,7 +36,7 @@ const typeIcons: Record<string, string> = {
 };
 
 const signalBadge: Record<string, string> = {
-  buy: 'bg-emerald-500/15 text-emerald-400 border-emerald-400/30',
+  buy: 'bg-grailiq-gold/15 text-grailiq-gold-light border-grailiq-gold/30',
   hold: 'bg-amber-500/15 text-amber-400 border-amber-400/30',
   watch: 'bg-slate-500/20 text-slate-300 border-slate-400/30',
   avoid: 'bg-rose-500/15 text-rose-400 border-rose-400/30',
@@ -203,6 +204,23 @@ export default function Dashboard() {
                       Was {m.scorePrior.toFixed(1)} · Now {m.scoreNow.toFixed(1)}
                     </p>
                   </div>
+                  {m.product.grailiqScore && (
+                    <div className="flex-shrink-0 hidden sm:block">
+                      <ScoreRing
+                        score={m.product.grailiqScore}
+                        size={24}
+                        bias={
+                          m.product.investmentSignal === 'buy'
+                            ? 'bullish'
+                            : m.product.investmentSignal === 'avoid'
+                            ? 'bearish'
+                            : m.product.investmentSignal === 'watch'
+                            ? 'watch'
+                            : 'neutral'
+                        }
+                      />
+                    </div>
+                  )}
                   <div className={`inline-flex items-center gap-1 font-bold tabular-nums ${deltaColor}`}>
                     {up ? (
                       <ArrowUpRight className="h-4 w-4" />
@@ -273,12 +291,23 @@ export default function Dashboard() {
                       >
                         {signal}
                       </span>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <TrendingUp className="h-3.5 w-3.5 text-grailiq-purple-light" />
-                        <span className="text-sm font-bold text-white tabular-nums">
-                          {product.grailiqScore}
-                        </span>
-                      </div>
+                      {product.grailiqScore && (
+                        <div className="flex-shrink-0">
+                          <ScoreRing
+                            score={product.grailiqScore}
+                            size={32}
+                            bias={
+                              product.investmentSignal === 'buy'
+                                ? 'bullish'
+                                : product.investmentSignal === 'avoid'
+                                ? 'bearish'
+                                : product.investmentSignal === 'watch'
+                                ? 'watch'
+                                : 'neutral'
+                            }
+                          />
+                        </div>
+                      )}
                       <ChevronRight className="h-4 w-4 text-gray-600 group-hover:text-grailiq-purple-light transition-colors flex-shrink-0" />
                     </Link>
                   );
@@ -438,7 +467,7 @@ function StatCard({
       <div className={`h-9 w-9 rounded-xl border flex items-center justify-center mb-3 ${accents}`}>
         <Icon className="h-4 w-4" />
       </div>
-      <p className="text-2xl font-bold text-white tabular-nums">{value}</p>
+      <p className="text-2xl font-bold text-white tabular-nums font-serif italic">{value}</p>
       <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-1 font-semibold">
         {label}
       </p>

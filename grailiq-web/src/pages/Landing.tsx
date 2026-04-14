@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { ScoreRing } from '@/components/ScoreRing';
 import {
   Bell,
   ArrowRight,
@@ -122,6 +123,29 @@ function PhoneMockup() {
     11450, 11320, 11560, 11740, 11890, 11760, 12010, 12180, 12340,
   ];
 
+  const [displayValue, setDisplayValue] = useState(0);
+
+  useEffect(() => {
+    let animationFrame: number;
+    let startTime: number | null = null;
+    const targetValue = 12340;
+    const duration = 1500; // 1.5 seconds
+
+    const animate = (currentTime: number) => {
+      if (startTime === null) startTime = currentTime;
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      setDisplayValue(Math.floor(progress * targetValue));
+
+      if (progress < 1) {
+        animationFrame = requestAnimationFrame(animate);
+      }
+    };
+
+    animationFrame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationFrame);
+  }, []);
+
   return (
     <div className="relative mx-auto w-full max-w-[320px]">
       {/* Device frame */}
@@ -142,7 +166,7 @@ function PhoneMockup() {
             <p className="text-[9px] font-semibold uppercase tracking-wider text-grailiq-purple-light">
               Portfolio Value
             </p>
-            <p className="mt-1 font-display text-3xl tabular-nums text-white">$12,340</p>
+            <p className="mt-1 font-display text-3xl tabular-nums text-white">${displayValue.toLocaleString()}</p>
             <div className="mt-1 flex items-center gap-1 text-xs">
               <ArrowUpRight size={12} className="text-emerald-400" />
               <span className="font-semibold text-emerald-400">+$2,140 (21.0%)</span>
@@ -169,7 +193,13 @@ function PhoneMockup() {
           </div>
 
           {/* Signal card */}
-          <div className="mx-4 mt-3 mb-6 rounded-xl border border-emerald-400/20 bg-emerald-500/5 px-3 py-2.5">
+          <div
+            className="mx-4 mt-3 mb-6 rounded-xl border border-emerald-400/20 bg-emerald-500/5 px-3 py-2.5 transition-all duration-500"
+            style={{
+              opacity: displayValue > 0 ? 1 : 0,
+              transform: displayValue > 0 ? 'translateY(0)' : 'translateY(16px)',
+            }}
+          >
             <div className="flex items-center gap-2">
               <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
               <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Strong Buy</p>
@@ -183,8 +213,11 @@ function PhoneMockup() {
 
       {/* Floating badges */}
       <div
-        className="absolute -left-6 top-28 rounded-xl border border-grailiq-gold/30 bg-grailiq-ink/90 px-3 py-2 shadow-xl backdrop-blur-md"
-        style={{ animation: 'float 6s ease-in-out infinite' }}
+        className="absolute -left-6 top-28 rounded-xl border border-grailiq-gold/30 bg-grailiq-ink/90 px-3 py-2 shadow-xl backdrop-blur-md transition-opacity duration-500"
+        style={{
+          animation: displayValue > 0 ? 'float 6s ease-in-out infinite' : 'none',
+          opacity: displayValue > 0 ? 1 : 0,
+        }}
       >
         <div className="flex items-center gap-2">
           <Bell size={12} className="text-grailiq-gold" />
@@ -229,6 +262,7 @@ function LiveTicker() {
           <div className="flex min-w-max animate-marquee gap-8">
             {[...TICKER_DATA, ...TICKER_DATA].map((t, i) => (
               <div key={i} className="flex shrink-0 items-center gap-3">
+                <div className="h-5 w-5 rounded bg-white/5 border border-white/10 flex-shrink-0" />
                 <span
                   className={`rounded border px-1.5 py-0.5 text-[9px] font-bold tracking-wider ${signalStyle(t.signal)}`}
                 >
@@ -302,9 +336,103 @@ function FAQItem({ q, a, defaultOpen }: { q: string; a: string; defaultOpen?: bo
   );
 }
 
+/* ─── Score Demo Card ────────────────────────────────────────── */
+function ScoreDemoCard() {
+  const [selectedSet, setSelectedSet] = useState<string>('Prismatic Evolutions');
+  const setNames = Object.keys(demoScores);
+  const demo = demoScores[selectedSet as keyof typeof demoScores] || demoScores['Prismatic Evolutions'];
+
+  return (
+    <div className="mt-12 max-w-md">
+      <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-4">
+        Try it →
+      </p>
+      <div className="rounded-xl border border-grailiq-gold/30 bg-gradient-to-br from-grailiq-gold/10 to-transparent p-5">
+        <select
+          value={selectedSet}
+          onChange={(e) => setSelectedSet(e.target.value)}
+          className="w-full mb-5 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm font-medium hover:border-grailiq-gold/50 focus:outline-none focus:border-grailiq-gold/50"
+        >
+          {setNames.map((name) => (
+            <option key={name} value={name} className="bg-grailiq-dark text-white">
+              {name}
+            </option>
+          ))}
+        </select>
+
+        <div className="flex items-start gap-4">
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-white mb-1">{demo.name}</p>
+            <p className="text-xs text-gray-400 mb-3">{demo.thesis}</p>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Price</span>
+              <span className="text-sm font-semibold text-white tabular-nums">
+                ${demo.price.toFixed(2)}
+              </span>
+            </div>
+          </div>
+          <div className="flex-shrink-0">
+            <ScoreRing
+              score={demo.score}
+              size={64}
+              bias={demo.bias}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Landing Page ─────────────────────────────────────────── */
+const ROTATING_TAGLINES = [
+  'For collectors who grew up pulling Charizards and grew into pulling triggers.',
+  'Finally, a way to know if that ETB is worth $85 or $850.',
+  'Every sealed product. Every retailer. One score.',
+  'Nostalgia-grade intel, investor-grade data.',
+];
+
+const demoScores = {
+  'Prismatic Evolutions': {
+    name: 'Prismatic Evolutions ETB',
+    price: 89.99,
+    score: 92,
+    bias: 'bullish' as const,
+    thesis: 'Strong demand on chase cards + limited print status = tight liquidity.',
+  },
+  'Surging Sparks': {
+    name: 'Surging Sparks Booster Box',
+    price: 178.50,
+    score: 88,
+    bias: 'bullish' as const,
+    thesis: 'Momentum from competitive play meta + booster revenue parity.',
+  },
+  'Journey Together': {
+    name: 'Journey Together Collection Box',
+    price: 39.99,
+    score: 72,
+    bias: 'neutral' as const,
+    thesis: 'Steady collector interest, but higher print run means slower appreciation.',
+  },
+  'Mega Evolution': {
+    name: 'Mega Evolution Collection',
+    price: 129.99,
+    score: 78,
+    bias: 'neutral' as const,
+    thesis: 'Classic nostalgia appeal, but vintage reprints limit exclusivity.',
+  },
+  'Perfect Order': {
+    name: 'Perfect Order Booster Box',
+    price: 164.00,
+    score: 81,
+    bias: 'bullish' as const,
+    thesis: 'Early set momentum + international demand support valuation.',
+  },
+};
+
 export default function Landing() {
   const setIndex = useRotatingIndex(ROTATING_SETS.length);
+  const taglineIndex = useRotatingIndex(ROTATING_TAGLINES.length, 4000);
 
   return (
     <div className="min-h-screen bg-grailiq-ink text-white">
@@ -396,6 +524,19 @@ export default function Landing() {
                 analytics for every sealed Pokémon TCG product. Stop guessing — invest with data.
               </p>
 
+              <div className="mt-4 h-6 overflow-hidden">
+                {ROTATING_TAGLINES.map((tagline, i) => (
+                  <p
+                    key={i}
+                    className={`text-xs uppercase tracking-widest text-grailiq-gold-light transition-opacity duration-500 ${
+                      i === taglineIndex ? 'opacity-100' : 'opacity-0 absolute'
+                    }`}
+                  >
+                    {tagline}
+                  </p>
+                ))}
+              </div>
+
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
                   to="/sign-in"
@@ -404,13 +545,16 @@ export default function Landing() {
                   Start Tracking Free
                   <ArrowRight size={18} className="transition-transform group-hover:translate-x-0.5" />
                 </Link>
-                <a
-                  href="#features"
+                <Link
+                  to="/app/sets"
                   className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.02] px-7 py-3.5 text-base font-medium text-gray-300 transition-all hover:border-white/25 hover:bg-white/[0.05] hover:text-white"
                 >
-                  See the Platform
-                </a>
+                  See a sample collection
+                </Link>
               </div>
+
+              {/* Score demo */}
+              <ScoreDemoCard />
 
               <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 text-xs text-gray-500">
                 <div className="flex items-center gap-1.5">
@@ -438,6 +582,23 @@ export default function Landing() {
 
       {/* Live Ticker */}
       <LiveTicker />
+
+      {/* Data Sources Attribution */}
+      <div className="border-y border-white/5 py-4">
+        <div className="mx-auto flex max-w-5xl items-center justify-center gap-3 px-6 text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-grailiq-gold">
+            Prices verified against
+          </p>
+          <div className="flex items-center gap-3">
+            {['TCGPlayer', 'PriceCharting', 'eBay Sold Listings', 'Target', 'Pokémon Center'].map((source, i) => (
+              <div key={source} className="flex items-center gap-3">
+                <span className="text-[10px] text-gray-400">{source}</span>
+                {i < 4 && <span className="text-gray-600">·</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* Real Stats */}
       <section className="border-b border-white/5 py-10">
@@ -510,6 +671,10 @@ export default function Landing() {
       {/* Comparison */}
       <section id="compare" className="relative border-t border-white/5 py-20 md:py-24">
         <div className="mx-auto max-w-5xl px-5 sm:px-6">
+          <p className="mb-8 text-center font-display text-lg italic text-gray-400">
+            Built by collectors who've been pulling Charizards since 1999.
+          </p>
+
           <div className="mx-auto mb-12 max-w-2xl text-center">
             <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-grailiq-gold-light">
               The Difference
@@ -624,24 +789,24 @@ export default function Landing() {
             {[
               {
                 quote:
-                  'Finally — the Pokémon app that feels like a Bloomberg Terminal, not a Pinterest board. Scores call the trend before Twitter does.',
-                name: 'Marcus T.',
-                role: '8-year sealed collector',
-                initials: 'MT',
+                  'GrailIQ caught the Prismatic Evolutions pre-release window I\'d been watching for weeks. Up 40% in six weeks. The score was right.',
+                name: 'Mike R.',
+                role: '340 sealed products',
+                initials: 'MR',
               },
               {
                 quote:
-                  'Portfolio P&L is what I was building in a messy spreadsheet for two years. GrailIQ just does it. The restock alerts alone paid for the year.',
-                name: 'Rita V.',
-                role: 'LGS owner',
-                initials: 'RV',
-              },
-              {
-                quote:
-                  'I was skeptical of the score at first. Then Crown Zenith flipped to BUY three days before it ran — I listened, bought, made 40%.',
-                name: 'Dev K.',
-                role: 'Investor',
+                  'I was treating my collection like a hobby. Now I can show my wife the P&L. Night and day.',
+                name: 'David K.',
+                role: 'Collector since 2020',
                 initials: 'DK',
+              },
+              {
+                quote:
+                  'The restock alerts pay for the subscription in one save. Hit Pokémon Center twice last week.',
+                name: 'Alex T.',
+                role: 'Investor tier',
+                initials: 'AT',
               },
             ].map((t) => (
               <div

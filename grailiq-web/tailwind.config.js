@@ -43,7 +43,7 @@ export default {
       animation: {
         'fade-in-up': 'fadeInUp 0.8s ease-out forwards',
         'fade-in': 'fadeIn 0.6s ease-out forwards',
-        'marquee': 'marquee 40s linear infinite',
+        'marquee': 'marquee 80s linear infinite',
         'pulse-glow': 'pulseGlow 3s ease-in-out infinite',
         'float': 'float 6s ease-in-out infinite',
         'ticker': 'ticker 60s linear infinite',

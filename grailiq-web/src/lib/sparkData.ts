@@ -45,7 +45,7 @@ export function signalToBias(signal: string | null | undefined): TrendBias {
 export function signalToColor(signal: string | null | undefined): string {
   switch (signal) {
     case 'buy':
-      return '#22C55E';
+      return '#F4C430';
     case 'hold':
       return '#F59E0B';
     case 'watch':

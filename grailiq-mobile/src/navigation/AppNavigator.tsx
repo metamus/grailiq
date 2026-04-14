@@ -1,5 +1,5 @@
-import React from 'react';
-import { Text } from 'react-native';
+import React, { useState } from 'react';
+import { Text, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { colors, fontSize } from '../theme/colors';
@@ -16,6 +16,8 @@ import { NotificationPrefsScreen } from '../screens/NotificationPrefsScreen';
 import { CompareScreen } from '../screens/CompareScreen';
 import { SignInScreen } from '../screens/SignInScreen';
 import { useAuthStore } from '../stores/useAuthStore';
+import { HomeScreen } from '../screens/HomeScreen';
+import { WatchScreen } from '../screens/WatchScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -31,19 +33,19 @@ function TabIcon({ emoji }: { emoji: string }) {
   return <Text style={{ fontSize: 20 }}>{emoji}</Text>;
 }
 
-function DashboardStack() {
+function HomeStack() {
   return (
     <Stack.Navigator screenOptions={screenOptions}>
-      <Stack.Screen name="DashboardHome" component={DashboardScreen} options={{ title: 'GrailIQ' }} />
+      <Stack.Screen name="HomeTab" component={HomeScreen} options={{ title: 'GrailIQ' }} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ title: 'Product' }} />
     </Stack.Navigator>
   );
 }
 
-function SetsStack() {
+function DiscoverStack() {
   return (
     <Stack.Navigator screenOptions={screenOptions}>
-      <Stack.Screen name="SetsHome" component={SetsScreen} options={{ title: 'Sets' }} />
+      <Stack.Screen name="SetsHome" component={SetsScreen} options={{ title: 'Discover' }} />
       <Stack.Screen name="SetDetail" component={SetDetailScreen} options={{ title: 'Set' }} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ title: 'Product' }} />
       <Stack.Screen name="Compare" component={CompareScreen} options={{ title: 'Compare' }} />
@@ -51,28 +53,10 @@ function SetsStack() {
   );
 }
 
-function PortfolioStack() {
+function WatchingStack() {
   return (
     <Stack.Navigator screenOptions={screenOptions}>
-      <Stack.Screen name="PortfolioHome" component={PortfolioScreen} options={{ title: 'Portfolio' }} />
-      <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ title: 'Product' }} />
-    </Stack.Navigator>
-  );
-}
-
-function AlertsStack() {
-  return (
-    <Stack.Navigator screenOptions={screenOptions}>
-      <Stack.Screen name="AlertsHome" component={AlertsScreen} options={{ title: 'Alerts' }} />
-      <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ title: 'Product' }} />
-    </Stack.Navigator>
-  );
-}
-
-function WatchlistStack() {
-  return (
-    <Stack.Navigator screenOptions={screenOptions}>
-      <Stack.Screen name="WatchlistHome" component={WatchlistScreen} options={{ title: 'Watchlist' }} />
+      <Stack.Screen name="WatchTab" component={WatchScreen} options={{ title: 'Watch' }} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ title: 'Product' }} />
     </Stack.Navigator>
   );
@@ -112,43 +96,27 @@ function MainTabs() {
       }}
     >
       <Tab.Screen
-        name="DashboardTab"
-        component={DashboardStack}
+        name="HomeTab"
+        component={HomeStack}
         options={{
           tabBarLabel: 'Home',
           tabBarIcon: () => <TabIcon emoji="📊" />,
         }}
       />
       <Tab.Screen
-        name="SetsTab"
-        component={SetsStack}
+        name="DiscoverTab"
+        component={DiscoverStack}
         options={{
-          tabBarLabel: 'Sets',
+          tabBarLabel: 'Discover',
           tabBarIcon: () => <TabIcon emoji="📦" />,
         }}
       />
       <Tab.Screen
-        name="PortfolioTab"
-        component={PortfolioStack}
-        options={{
-          tabBarLabel: 'Portfolio',
-          tabBarIcon: () => <TabIcon emoji="💼" />,
-        }}
-      />
-      <Tab.Screen
-        name="WatchlistTab"
-        component={WatchlistStack}
+        name="WatchTab"
+        component={WatchingStack}
         options={{
           tabBarLabel: 'Watch',
           tabBarIcon: () => <TabIcon emoji="❤️" />,
-        }}
-      />
-      <Tab.Screen
-        name="AlertsTab"
-        component={AlertsStack}
-        options={{
-          tabBarLabel: 'Alerts',
-          tabBarIcon: () => <TabIcon emoji="🔔" />,
         }}
       />
       <Tab.Screen

@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Allow: /score
+Allow: /sign-in
+Disallow: /app/
+Disallow: /api/
+
+Sitemap: https://grailiq.com/sitemap.xml

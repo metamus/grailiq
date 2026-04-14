@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useProduct, usePriceHistory } from '@/hooks/useProducts';
 import { useIsWatching, useToggleWatch } from '@/hooks/useWatchlist';
 import { Spinner } from '@/components/ui/Spinner';
+import { ScoreRing } from '@/components/ScoreRing';
 import { PriceChart } from '@/components/charts/PriceChart';
 import { AddToPortfolioModal } from '@/components/modals/AddToPortfolioModal';
 import { CreateAlertModal } from '@/components/modals/CreateAlertModal';
@@ -21,7 +22,6 @@ import {
   ArrowDownRight,
   Minus,
   Sparkles,
-  Gauge,
   Heart,
 } from 'lucide-react';
 
@@ -182,7 +182,7 @@ export default function ProductDetail() {
               <p className="text-[10px] font-semibold uppercase tracking-wider text-grailiq-purple-light mb-1">
                 {typeLabels[product.type] || product.type}
               </p>
-              <h1 className="text-2xl sm:text-3xl font-bold leading-tight">{product.name}</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold leading-tight font-serif italic">{product.name}</h1>
               {product.msrp && (
                 <p className="text-sm text-gray-400 mt-2 flex items-center gap-1.5">
                   <DollarSign className="h-3.5 w-3.5" />
@@ -276,23 +276,29 @@ export default function ProductDetail() {
             ) : null
           }
         />
-        <StatCard
-          icon={Gauge}
-          label="GrailIQ Score"
-          value={product.grailiqScore ?? '—'}
-          accent="gold"
-          sub={
-            signal ? (
-              <span
-                className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${signal.bg} ${signal.text} ${signal.border}`}
-              >
-                {signalInfo.label}
-              </span>
-            ) : (
-              <span className="text-xs text-gray-500">Awaiting data</span>
-            )
-          }
-        />
+        <div className="rounded-2xl border border-white/5 bg-grailiq-dark p-4 flex flex-col items-center justify-center">
+          <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-3">
+            GrailIQ Score
+          </span>
+          {product.grailiqScore ? (
+            <>
+              <ScoreRing
+                score={product.grailiqScore}
+                size={80}
+                bias={signal ? (signal === signalStyles.buy ? 'bullish' : signal === signalStyles.avoid ? 'bearish' : signal === signalStyles.watch ? 'watch' : 'neutral') : 'neutral'}
+              />
+              {signalInfo && (
+                <span
+                  className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border mt-3 ${signal?.bg} ${signal?.text} ${signal?.border}`}
+                >
+                  {signalInfo.label}
+                </span>
+              )}
+            </>
+          ) : (
+            <span className="text-xs text-gray-500">Awaiting data</span>
+          )}
+        </div>
       </div>
 
       {/* Main content */}

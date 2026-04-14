@@ -17,6 +17,7 @@ import { stripeRoutes } from './routes/stripe.js';
 import { watchlistRoutes } from './routes/watchlist.js';
 import { meRoutes } from './routes/me.js';
 import { eventsRoutes } from './routes/events.js';
+import { publicApiRoutes } from './routes/publicApi.js';
 import { pool } from './config/database.js';
 import { redis } from './config/redis.js';
 import { initJobs } from './jobs/init.js';
@@ -70,6 +71,7 @@ async function buildApp() {
   await app.register(watchlistRoutes, { prefix: '/api/v1' });
   await app.register(meRoutes, { prefix: '/api/v1' });
   await app.register(eventsRoutes, { prefix: '/api/v1' });
+  await app.register(publicApiRoutes, { prefix: '/api/v1' });
 
   return app;
 }

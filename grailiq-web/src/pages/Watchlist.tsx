@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useWatchlist, useRemoveWatch } from '@/hooks/useWatchlist';
 import { Spinner } from '@/components/ui/Spinner';
+import { ScoreRing } from '@/components/ScoreRing';
 import { Sparkline } from '@/components/charts/Sparkline';
 import { generateTrend, signalToBias, signalToColor } from '@/lib/sparkData';
 import { formatPrice } from '@/lib/utils';
@@ -10,7 +11,6 @@ import {
   ChevronRight,
   Trash2,
   Package,
-  TrendingUp,
 } from 'lucide-react';
 
 const typeIcons: Record<string, string> = {
@@ -25,7 +25,7 @@ const typeIcons: Record<string, string> = {
 };
 
 const signalBadge: Record<string, string> = {
-  buy: 'bg-emerald-500/15 text-emerald-400 border-emerald-400/30',
+  buy: 'bg-grailiq-gold/15 text-grailiq-gold-light border-grailiq-gold/30',
   hold: 'bg-amber-500/15 text-amber-400 border-amber-400/30',
   watch: 'bg-slate-500/20 text-slate-300 border-slate-400/30',
   avoid: 'bg-rose-500/15 text-rose-400 border-rose-400/30',
@@ -141,14 +141,20 @@ export default function Watchlist() {
                   )}
 
                   {product.grailiqScore && (
-                    <div className="text-right flex-shrink-0 hidden sm:block">
-                      <p className="text-[9px] text-gray-500 uppercase tracking-wider">Score</p>
-                      <div className="inline-flex items-center gap-1">
-                        <TrendingUp className="h-3.5 w-3.5 text-grailiq-purple-light" />
-                        <p className="text-sm font-bold text-white tabular-nums">
-                          {product.grailiqScore}
-                        </p>
-                      </div>
+                    <div className="flex-shrink-0 hidden sm:block">
+                      <ScoreRing
+                        score={product.grailiqScore}
+                        size={32}
+                        bias={
+                          product.investmentSignal === 'buy'
+                            ? 'bullish'
+                            : product.investmentSignal === 'avoid'
+                            ? 'bearish'
+                            : product.investmentSignal === 'watch'
+                            ? 'watch'
+                            : 'neutral'
+                        }
+                      />
                     </div>
                   )}
 

@@ -1,6 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { useSet } from '@/hooks/useSets';
 import { Spinner } from '@/components/ui/Spinner';
+import { ScoreRing } from '@/components/ScoreRing';
 import { Sparkline } from '@/components/charts/Sparkline';
 import { generateTrend, signalToBias, signalToColor } from '@/lib/sparkData';
 import { formatDate, formatPrice } from '@/lib/utils';
@@ -9,7 +10,6 @@ import {
   Calendar,
   Layers,
   Package,
-  TrendingUp,
   ChevronRight,
   Sparkles,
   Scale,
@@ -26,19 +26,23 @@ const typeLabels: Record<string, string> = {
   other: 'Other',
 };
 
-const typeIcons: Record<string, string> = {
-  booster_box: '📦',
-  etb: '🎯',
-  booster_pack: '🃏',
-  collection_box: '🎁',
-  blister_pack: '💎',
-  tin: '🥫',
-  premium_collection: '👑',
-  other: '📋',
-};
+// Helper to get abbreviation from product type
+function typeAbbreviation(type: string): string {
+  const abbrev: Record<string, string> = {
+    booster_box: 'BOX',
+    etb: 'ETB',
+    booster_pack: 'BPK',
+    collection_box: 'COL',
+    blister_pack: 'BLS',
+    tin: 'TIN',
+    premium_collection: 'PRM',
+    other: 'OTH',
+  };
+  return abbrev[type] || type.slice(0, 3).toUpperCase();
+}
 
 const signalBadge: Record<string, string> = {
-  buy: 'bg-emerald-500/15 text-emerald-400 border-emerald-400/30',
+  buy: 'bg-grailiq-gold/15 text-grailiq-gold-light border-grailiq-gold/30',
   hold: 'bg-amber-500/15 text-amber-400 border-amber-400/30',
   watch: 'bg-slate-500/20 text-slate-300 border-slate-400/30',
   avoid: 'bg-rose-500/15 text-rose-400 border-rose-400/30',
@@ -94,10 +98,15 @@ export default function SetDetail() {
             </p>
             <h1 className="text-3xl sm:text-4xl font-bold leading-tight">{set.name}</h1>
           </div>
-          {set.isOutOfPrint && (
+          {set.isOutOfPrint ? (
             <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-400/30">
               <Sparkles className="h-3 w-3" />
               Out of Print
+            </span>
+          ) : (
+            <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-400/30">
+              <Sparkles className="h-3 w-3" />
+              In Print
             </span>
           )}
         </div>
@@ -158,8 +167,8 @@ export default function SetDetail() {
                   to={`/app/products/${product.id}`}
                   className="group flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.02] transition-colors"
                 >
-                  <div className="h-11 w-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-xl flex-shrink-0">
-                    {typeIcons[product.type] || '📋'}
+                  <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-grailiq-purple/30 to-grailiq-dark border border-grailiq-purple/20 flex items-center justify-center text-[10px] font-bold text-grailiq-purple-light flex-shrink-0">
+                    {typeAbbreviation(product.type)}
                   </div>
 
                   <div className="flex-1 min-w-0">
@@ -191,14 +200,20 @@ export default function SetDetail() {
                   </div>
 
                   {product.grailiqScore && (
-                    <div className="text-right flex-shrink-0 hidden sm:block">
-                      <p className="text-[10px] text-gray-500 uppercase tracking-wider">Score</p>
-                      <div className="inline-flex items-center gap-1">
-                        <TrendingUp className="h-3.5 w-3.5 text-grailiq-purple-light" />
-                        <p className="text-sm font-bold text-white tabular-nums">
-                          {product.grailiqScore}
-                        </p>
-                      </div>
+                    <div className="flex-shrink-0 hidden sm:block">
+                      <ScoreRing
+                        score={product.grailiqScore}
+                        size={32}
+                        bias={
+                          product.investmentSignal === 'buy'
+                            ? 'bullish'
+                            : product.investmentSignal === 'avoid'
+                            ? 'bearish'
+                            : product.investmentSignal === 'watch'
+                            ? 'watch'
+                            : 'neutral'
+                        }
+                      />
                     </div>
                   )}
 

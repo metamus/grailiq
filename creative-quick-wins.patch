@@ -1,0 +1,177 @@
+diff --git a/grailiq-web/src/lib/sparkData.ts b/grailiq-web/src/lib/sparkData.ts
+index dadebc3..aa6f095 100644
+--- a/grailiq-web/src/lib/sparkData.ts
++++ b/grailiq-web/src/lib/sparkData.ts
+@@ -45,7 +45,7 @@ export function signalToBias(signal: string | null | undefined): TrendBias {
+ export function signalToColor(signal: string | null | undefined): string {
+   switch (signal) {
+     case 'buy':
+-      return '#22C55E';
++      return '#F4C430';
+     case 'hold':
+       return '#F59E0B';
+     case 'watch':
+diff --git a/grailiq-web/src/pages/Compare.tsx b/grailiq-web/src/pages/Compare.tsx
+index f89962e..d2fe7b7 100644
+--- a/grailiq-web/src/pages/Compare.tsx
++++ b/grailiq-web/src/pages/Compare.tsx
+@@ -29,7 +29,7 @@ const typeLabels: Record<string, string> = {
+ };
+ 
+ const signalBadge: Record<string, string> = {
+-  buy: 'bg-emerald-500/15 text-emerald-400 border-emerald-400/30',
++  buy: 'bg-grailiq-gold/15 text-grailiq-gold-light border-grailiq-gold/30',
+   hold: 'bg-amber-500/15 text-amber-400 border-amber-400/30',
+   watch: 'bg-slate-500/20 text-slate-300 border-slate-400/30',
+   avoid: 'bg-rose-500/15 text-rose-400 border-rose-400/30',
+diff --git a/grailiq-web/src/pages/Dashboard.tsx b/grailiq-web/src/pages/Dashboard.tsx
+index 854aba8..a79c843 100644
+--- a/grailiq-web/src/pages/Dashboard.tsx
++++ b/grailiq-web/src/pages/Dashboard.tsx
+@@ -35,7 +35,7 @@ const typeIcons: Record<string, string> = {
+ };
+ 
+ const signalBadge: Record<string, string> = {
+-  buy: 'bg-emerald-500/15 text-emerald-400 border-emerald-400/30',
++  buy: 'bg-grailiq-gold/15 text-grailiq-gold-light border-grailiq-gold/30',
+   hold: 'bg-amber-500/15 text-amber-400 border-amber-400/30',
+   watch: 'bg-slate-500/20 text-slate-300 border-slate-400/30',
+   avoid: 'bg-rose-500/15 text-rose-400 border-rose-400/30',
+diff --git a/grailiq-web/src/pages/Landing.tsx b/grailiq-web/src/pages/Landing.tsx
+index a51698c..668120f 100644
+--- a/grailiq-web/src/pages/Landing.tsx
++++ b/grailiq-web/src/pages/Landing.tsx
+@@ -303,8 +303,16 @@ function FAQItem({ q, a, defaultOpen }: { q: string; a: string; defaultOpen?: bo
+ }
+ 
+ /* ─── Landing Page ─────────────────────────────────────────── */
++const ROTATING_TAGLINES = [
++  'For collectors who grew up pulling Charizards and grew into pulling triggers.',
++  'Finally, a way to know if that ETB is worth $85 or $850.',
++  'Every sealed product. Every retailer. One score.',
++  'Nostalgia-grade intel, investor-grade data.',
++];
++
+ export default function Landing() {
+   const setIndex = useRotatingIndex(ROTATING_SETS.length);
++  const taglineIndex = useRotatingIndex(ROTATING_TAGLINES.length, 4000);
+ 
+   return (
+     <div className="min-h-screen bg-grailiq-ink text-white">
+@@ -396,6 +404,19 @@ export default function Landing() {
+                 analytics for every sealed Pokémon TCG product. Stop guessing — invest with data.
+               </p>
+ 
++              <div className="mt-4 h-6 overflow-hidden">
++                {ROTATING_TAGLINES.map((tagline, i) => (
++                  <p
++                    key={i}
++                    className={`text-xs uppercase tracking-widest text-grailiq-gold-light transition-opacity duration-500 ${
++                      i === taglineIndex ? 'opacity-100' : 'opacity-0 absolute'
++                    }`}
++                  >
++                    {tagline}
++                  </p>
++                ))}
++              </div>
++
+               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                 <Link
+                   to="/sign-in"
+@@ -404,12 +425,12 @@ export default function Landing() {
+                   Start Tracking Free
+                   <ArrowRight size={18} className="transition-transform group-hover:translate-x-0.5" />
+                 </Link>
+-                <a
+-                  href="#features"
++                <Link
++                  to="/app/sets"
+                   className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.02] px-7 py-3.5 text-base font-medium text-gray-300 transition-all hover:border-white/25 hover:bg-white/[0.05] hover:text-white"
+                 >
+-                  See the Platform
+-                </a>
++                  See a sample collection
++                </Link>
+               </div>
+ 
+               <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 text-xs text-gray-500">
+diff --git a/grailiq-web/src/pages/Score.tsx b/grailiq-web/src/pages/Score.tsx
+index 2ed095e..11d73f7 100644
+--- a/grailiq-web/src/pages/Score.tsx
++++ b/grailiq-web/src/pages/Score.tsx
+@@ -65,7 +65,7 @@ const signalBands = [
+   {
+     label: 'Buy',
+     range: '75 – 100',
+-    color: 'from-emerald-500/25 border-emerald-400/40 text-emerald-400',
++    color: 'from-grailiq-gold/25 border-grailiq-gold/40 text-grailiq-gold-light',
+     description:
+       'Strong momentum, healthy MSRP premium, low volatility. The quantitative signal says accumulate.',
+   },
+@@ -299,6 +299,40 @@ export default function Score() {
+         </div>
+       </section>
+ 
++      <section className="py-20 border-t border-white/5">
++        <div className="mx-auto max-w-3xl px-6">
++          <p className="text-[10px] font-bold uppercase tracking-wider text-grailiq-gold-light mb-4">Appendix · Methodology</p>
++          <h2 className="text-3xl font-bold text-white mb-6">How the GrailIQ Score is computed</h2>
++          <div className="space-y-5 text-[15px] leading-relaxed text-gray-300">
++            <p>
++              Every sealed product receives a score from 0 to 100, recomputed
++              at 02:00 UTC daily and snapshotted to <code className="text-gray-100 bg-white/5 px-1.5 py-0.5 rounded">score_history</code> so
++              performance is auditable over time. Same inputs, same score — every time.
++            </p>
++            <p>
++              The score is a weighted blend of five deterministic factors. Each factor
++              returns a 0–100 subscore, which is then combined according to these weights:
++            </p>
++            <ul className="space-y-2 ml-5 list-disc marker:text-grailiq-gold-light">
++              <li><strong className="text-white">Price trend (35%)</strong> — 30-day price movement, weighted toward recent days.</li>
++              <li><strong className="text-white">Scarcity (25%)</strong> — reprint status, print run tier, time since last restock across tracked retailers.</li>
++              <li><strong className="text-white">Momentum (15%)</strong> — social and search signals, recent creator coverage.</li>
++              <li><strong className="text-white">Liquidity (15%)</strong> — volume of tracked retailer mappings that are currently in stock, secondary market depth.</li>
++              <li><strong className="text-white">Set quality (10%)</strong> — pull-rate modifiers, chase card density, historical set performance.</li>
++            </ul>
++            <p>
++              Data sources: retailer APIs and scrapers for Target, Pokémon Center, Best Buy,
++              Walmart, Amazon, and TCGPlayer. Price history verified against TCGPlayer and
++              eBay sold listings. Print run status sourced from official Pokémon TCG releases
++              and confirmed reprint announcements.
++            </p>
++            <p className="text-sm text-gray-500 italic">
++              GrailIQ is a data product. Scores are informational, not financial advice.
++            </p>
++          </div>
++        </div>
++      </section>
++
+       <footer className="border-t border-white/5 py-8">
+         <div className="mx-auto max-w-7xl px-5 sm:px-6 text-center text-sm text-gray-500">
+           Grail<span className="text-grailiq-purple-light">IQ</span> · Price intelligence for
+diff --git a/grailiq-web/src/pages/SetDetail.tsx b/grailiq-web/src/pages/SetDetail.tsx
+index fcdd49d..946c1a8 100644
+--- a/grailiq-web/src/pages/SetDetail.tsx
++++ b/grailiq-web/src/pages/SetDetail.tsx
+@@ -38,7 +38,7 @@ const typeIcons: Record<string, string> = {
+ };
+ 
+ const signalBadge: Record<string, string> = {
+-  buy: 'bg-emerald-500/15 text-emerald-400 border-emerald-400/30',
++  buy: 'bg-grailiq-gold/15 text-grailiq-gold-light border-grailiq-gold/30',
+   hold: 'bg-amber-500/15 text-amber-400 border-amber-400/30',
+   watch: 'bg-slate-500/20 text-slate-300 border-slate-400/30',
+   avoid: 'bg-rose-500/15 text-rose-400 border-rose-400/30',
+diff --git a/grailiq-web/src/pages/Watchlist.tsx b/grailiq-web/src/pages/Watchlist.tsx
+index 81f8b38..882e923 100644
+--- a/grailiq-web/src/pages/Watchlist.tsx
++++ b/grailiq-web/src/pages/Watchlist.tsx
+@@ -25,7 +25,7 @@ const typeIcons: Record<string, string> = {
+ };
+ 
+ const signalBadge: Record<string, string> = {
+-  buy: 'bg-emerald-500/15 text-emerald-400 border-emerald-400/30',
++  buy: 'bg-grailiq-gold/15 text-grailiq-gold-light border-grailiq-gold/30',
+   hold: 'bg-amber-500/15 text-amber-400 border-amber-400/30',
+   watch: 'bg-slate-500/20 text-slate-300 border-slate-400/30',
+   avoid: 'bg-rose-500/15 text-rose-400 border-rose-400/30',

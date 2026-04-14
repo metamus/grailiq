@@ -9,6 +9,7 @@ import { usePageTracking } from '@/hooks/usePageTracking';
 // Lazy-loaded pages for code-splitting
 const Landing = lazy(() => import('@/pages/Landing'));
 const Score = lazy(() => import('@/pages/Score'));
+const Today = lazy(() => import('@/pages/Today'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Sets = lazy(() => import('@/pages/Sets'));
 const SetDetail = lazy(() => import('@/pages/SetDetail'));
@@ -106,6 +107,7 @@ export default function App() {
         />
         <Route path="/sign-in" element={<SignIn />} />
         <Route path="/score" element={<Score />} />
+        <Route path="/today" element={<Today />} />
         <Route path="/status" element={<Status />} />
         <Route path="/changelog" element={<Changelog />} />
         <Route path="/privacy" element={<Privacy />} />

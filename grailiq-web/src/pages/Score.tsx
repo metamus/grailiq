@@ -65,7 +65,7 @@ const signalBands = [
   {
     label: 'Buy',
     range: '75 – 100',
-    color: 'from-emerald-500/25 border-emerald-400/40 text-emerald-400',
+    color: 'from-grailiq-gold/25 border-grailiq-gold/40 text-grailiq-gold-light',
     description:
       'Strong momentum, healthy MSRP premium, low volatility. The quantitative signal says accumulate.',
   },
@@ -295,6 +295,40 @@ export default function Score() {
             >
               Back to home
             </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-20 border-t border-white/5">
+        <div className="mx-auto max-w-3xl px-6">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-grailiq-gold-light mb-4">Appendix · Methodology</p>
+          <h2 className="text-3xl font-bold text-white mb-6">How the GrailIQ Score is computed</h2>
+          <div className="space-y-5 text-[15px] leading-relaxed text-gray-300">
+            <p>
+              Every sealed product receives a score from 0 to 100, recomputed
+              at 02:00 UTC daily and snapshotted to <code className="text-gray-100 bg-white/5 px-1.5 py-0.5 rounded">score_history</code> so
+              performance is auditable over time. Same inputs, same score — every time.
+            </p>
+            <p>
+              The score is a weighted blend of five deterministic factors. Each factor
+              returns a 0–100 subscore, which is then combined according to these weights:
+            </p>
+            <ul className="space-y-2 ml-5 list-disc marker:text-grailiq-gold-light">
+              <li><strong className="text-white">Price trend (35%)</strong> — 30-day price movement, weighted toward recent days.</li>
+              <li><strong className="text-white">Scarcity (25%)</strong> — reprint status, print run tier, time since last restock across tracked retailers.</li>
+              <li><strong className="text-white">Momentum (15%)</strong> — social and search signals, recent creator coverage.</li>
+              <li><strong className="text-white">Liquidity (15%)</strong> — volume of tracked retailer mappings that are currently in stock, secondary market depth.</li>
+              <li><strong className="text-white">Set quality (10%)</strong> — pull-rate modifiers, chase card density, historical set performance.</li>
+            </ul>
+            <p>
+              Data sources: retailer APIs and scrapers for Target, Pokémon Center, Best Buy,
+              Walmart, Amazon, and TCGPlayer. Price history verified against TCGPlayer and
+              eBay sold listings. Print run status sourced from official Pokémon TCG releases
+              and confirmed reprint announcements.
+            </p>
+            <p className="text-sm text-gray-500 italic">
+              GrailIQ is a data product. Scores are informational, not financial advice.
+            </p>
           </div>
         </div>
       </section>

@@ -29,7 +29,7 @@ const typeLabels: Record<string, string> = {
 };
 
 const signalBadge: Record<string, string> = {
-  buy: 'bg-emerald-500/15 text-emerald-400 border-emerald-400/30',
+  buy: 'bg-grailiq-gold/15 text-grailiq-gold-light border-grailiq-gold/30',
   hold: 'bg-amber-500/15 text-amber-400 border-amber-400/30',
   watch: 'bg-slate-500/20 text-slate-300 border-slate-400/30',
   avoid: 'bg-rose-500/15 text-rose-400 border-rose-400/30',
