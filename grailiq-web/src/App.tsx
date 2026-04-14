@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Spinner } from '@/components/ui/Spinner';
 import { supabase } from '@/lib/supabase';
@@ -23,9 +23,24 @@ function PageLoader() {
   );
 }
 
+/** Protected route wrapper — requires authentication */
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { session, isLoading } = useAuthStore();
+
+  if (isLoading) {
+    return <PageLoader />;
+  }
+
+  if (!session) {
+    return <Navigate to="/sign-in" replace />;
+  }
+
+  return <>{children}</>;
+}
+
 /** Root application component with Supabase auth and routing */
 export default function App() {
-  const { setUser, setSession, setLoading } = useAuthStore();
+  const { setUser, setSession, setLoading, isLoading } = useAuthStore();
 
   useEffect(() => {
     // Get initial session
@@ -44,11 +59,21 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, [setUser, setSession, setLoading]);
 
+  if (isLoading) {
+    return <PageLoader />;
+  }
+
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/sign-in" element={<SignIn />} />
-        <Route element={<AppLayout />}>
+        <Route
+          element={
+            <ProtectedRoute>
+              <AppLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<Dashboard />} />
           <Route path="sets" element={<Sets />} />
           <Route path="sets/:id" element={<SetDetail />} />
@@ -57,6 +82,7 @@ export default function App() {
           <Route path="alerts" element={<Alerts />} />
           <Route path="pricing" element={<Pricing />} />
         </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
   );
