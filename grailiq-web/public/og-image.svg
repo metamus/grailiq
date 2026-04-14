@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0B0B18"/>
+      <stop offset="100%" stop-color="#12121F"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="30%" cy="30%" r="50%">
+      <stop offset="0%" stop-color="#7F77DD" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#7F77DD" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="gold" cx="80%" cy="70%" r="40%">
+      <stop offset="0%" stop-color="#F4C430" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#F4C430" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="goldText" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#F4C430"/>
+      <stop offset="100%" stop-color="#FFDB6E"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect width="1200" height="630" fill="url(#gold)"/>
+
+  <!-- Brand mark -->
+  <g transform="translate(80, 80)">
+    <text font-family="Inter, sans-serif" font-weight="700" font-size="36" fill="#F9FAFB">Grail</text>
+    <text x="100" font-family="Inter, sans-serif" font-weight="700" font-size="36" fill="#7F77DD">IQ</text>
+  </g>
+
+  <!-- Chip badge -->
+  <g transform="translate(80, 180)">
+    <rect width="420" height="40" rx="20" fill="#F4C430" fill-opacity="0.1" stroke="#F4C430" stroke-opacity="0.3"/>
+    <text x="24" y="26" font-family="Inter, sans-serif" font-weight="500" font-size="14" fill="#FFDB6E">
+      The Bloomberg Terminal for Sealed Pokémon
+    </text>
+  </g>
+
+  <!-- Headline -->
+  <g transform="translate(80, 260)">
+    <text font-family="Instrument Serif, serif" font-size="82" fill="#F9FAFB">Know what your</text>
+    <text y="96" font-family="Instrument Serif, serif" font-size="82" fill="url(#goldText)" font-style="italic">grails</text>
+    <text x="192" y="96" font-family="Instrument Serif, serif" font-size="82" fill="#F9FAFB">are actually worth.</text>
+  </g>
+
+  <!-- Stats row -->
+  <g transform="translate(80, 510)">
+    <g>
+      <text font-family="Instrument Serif, serif" font-size="44" fill="#F9FAFB">216+</text>
+      <text y="30" font-family="Inter, sans-serif" font-size="13" fill="#9CA3AF" letter-spacing="2">PRODUCTS</text>
+    </g>
+    <g transform="translate(200, 0)">
+      <text font-family="Instrument Serif, serif" font-size="44" fill="#F9FAFB">173</text>
+      <text y="30" font-family="Inter, sans-serif" font-size="13" fill="#9CA3AF" letter-spacing="2">SETS TRACKED</text>
+    </g>
+    <g transform="translate(400, 0)">
+      <text font-family="Instrument Serif, serif" font-size="44" fill="#F9FAFB">5m</text>
+      <text y="30" font-family="Inter, sans-serif" font-size="13" fill="#9CA3AF" letter-spacing="2">HOT PRICE REFRESH</text>
+    </g>
+    <g transform="translate(640, 0)">
+      <text font-family="Instrument Serif, serif" font-size="44" fill="#F9FAFB">24/7</text>
+      <text y="30" font-family="Inter, sans-serif" font-size="13" fill="#9CA3AF" letter-spacing="2">RESTOCK MONITORING</text>
+    </g>
+  </g>
+
+  <!-- Score badge decoration -->
+  <g transform="translate(960, 260)">
+    <circle cx="80" cy="80" r="76" fill="#0B0B18" stroke="#F4C430" stroke-opacity="0.4" stroke-width="2"/>
+    <text x="80" y="55" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="11" fill="#F4C430" letter-spacing="2">GRAILIQ</text>
+    <text x="80" y="100" text-anchor="middle" font-family="Instrument Serif, serif" font-size="52" fill="#F9FAFB">92</text>
+    <text x="80" y="125" text-anchor="middle" font-family="Inter, sans-serif" font-weight="700" font-size="11" fill="#22C55E" letter-spacing="2">BUY</text>
+  </g>
+</svg>

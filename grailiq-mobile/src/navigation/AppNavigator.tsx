@@ -10,6 +10,10 @@ import { SetDetailScreen } from '../screens/SetDetailScreen';
 import { ProductDetailScreen } from '../screens/ProductDetailScreen';
 import { PortfolioScreen } from '../screens/PortfolioScreen';
 import { AlertsScreen } from '../screens/AlertsScreen';
+import { WatchlistScreen } from '../screens/WatchlistScreen';
+import { SettingsScreen } from '../screens/SettingsScreen';
+import { NotificationPrefsScreen } from '../screens/NotificationPrefsScreen';
+import { CompareScreen } from '../screens/CompareScreen';
 import { SignInScreen } from '../screens/SignInScreen';
 import { useAuthStore } from '../stores/useAuthStore';
 
@@ -42,6 +46,7 @@ function SetsStack() {
       <Stack.Screen name="SetsHome" component={SetsScreen} options={{ title: 'Sets' }} />
       <Stack.Screen name="SetDetail" component={SetDetailScreen} options={{ title: 'Set' }} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ title: 'Product' }} />
+      <Stack.Screen name="Compare" component={CompareScreen} options={{ title: 'Compare' }} />
     </Stack.Navigator>
   );
 }
@@ -60,6 +65,28 @@ function AlertsStack() {
     <Stack.Navigator screenOptions={screenOptions}>
       <Stack.Screen name="AlertsHome" component={AlertsScreen} options={{ title: 'Alerts' }} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ title: 'Product' }} />
+    </Stack.Navigator>
+  );
+}
+
+function WatchlistStack() {
+  return (
+    <Stack.Navigator screenOptions={screenOptions}>
+      <Stack.Screen name="WatchlistHome" component={WatchlistScreen} options={{ title: 'Watchlist' }} />
+      <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ title: 'Product' }} />
+    </Stack.Navigator>
+  );
+}
+
+function SettingsStack() {
+  return (
+    <Stack.Navigator screenOptions={screenOptions}>
+      <Stack.Screen name="SettingsHome" component={SettingsScreen} options={{ title: 'Settings' }} />
+      <Stack.Screen
+        name="NotificationPrefs"
+        component={NotificationPrefsScreen}
+        options={{ title: 'Notifications' }}
+      />
     </Stack.Navigator>
   );
 }
@@ -109,11 +136,27 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
+        name="WatchlistTab"
+        component={WatchlistStack}
+        options={{
+          tabBarLabel: 'Watch',
+          tabBarIcon: () => <TabIcon emoji="❤️" />,
+        }}
+      />
+      <Tab.Screen
         name="AlertsTab"
         component={AlertsStack}
         options={{
           tabBarLabel: 'Alerts',
           tabBarIcon: () => <TabIcon emoji="🔔" />,
+        }}
+      />
+      <Tab.Screen
+        name="SettingsTab"
+        component={SettingsStack}
+        options={{
+          tabBarLabel: 'Settings',
+          tabBarIcon: () => <TabIcon emoji="⚙️" />,
         }}
       />
     </Tab.Navigator>

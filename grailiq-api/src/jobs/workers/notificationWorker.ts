@@ -2,6 +2,20 @@ import { Worker, Job } from 'bullmq';
 import { redis } from '../../config/redis.js';
 import { logger } from '../../lib/logger.js';
 import { env } from '../../config/env.js';
+import {
+  getUserPushTokens,
+  sendExpoPushBatch,
+  type PushMessage,
+} from '../../services/expoPush.js';
+import { db } from '../../config/database.js';
+import { users } from '../../db/schema.js';
+import { eq } from 'drizzle-orm';
+import { resolvePrefs, shouldSend } from '../../lib/notificationPrefs.js';
+
+/** Minimal HTML escape to keep user-supplied names from breaking templates. */
+function escape(s: string): string {
+  return s.replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c]!));
+}
 
 if (!redis) {
   logger.info('Redis not available — notification worker disabled');
@@ -23,7 +37,21 @@ interface RestockNotificationPayload {
   url?: string;
 }
 
-type NotificationPayload = RestockNotificationPayload;
+interface PriceTargetNotificationPayload {
+  type: 'price_target';
+  userId: string;
+  userEmail: string;
+  displayName: string | null;
+  watchlistId: string;
+  productId: string;
+  productName: string;
+  productType: string;
+  retailer: 'watchlist';
+  targetPrice: number;
+  currentPrice: number;
+}
+
+type NotificationPayload = RestockNotificationPayload | PriceTargetNotificationPayload;
 
 const retailerLabels: Record<string, string> = {
   pokemon_center: 'Pokemon Center',
@@ -130,6 +158,42 @@ function buildRestockEmail(payload: RestockNotificationPayload): { subject: stri
   return { subject, html };
 }
 
+/**
+ * Send a restock push notification to every enabled device the user has
+ * registered. Returns the Expo batch summary (ok / failed / disabled counts).
+ */
+async function sendRestockPush(
+  payload: RestockNotificationPayload,
+): Promise<{ ok: number; failed: number; disabled: number }> {
+  const tokens = await getUserPushTokens(payload.userId);
+  if (tokens.length === 0) {
+    return { ok: 0, failed: 0, disabled: 0 };
+  }
+
+  const retailer = retailerLabels[payload.retailer] || payload.retailer;
+  const priceStr = payload.price ? `$${payload.price.toFixed(2)}` : 'Available';
+
+  const title = `🔔 Back in stock at ${retailer}`;
+  const body = `${payload.productName} — ${priceStr}. Tap to buy before it's gone.`;
+
+  const messages: PushMessage[] = tokens.map((to) => ({
+    to,
+    title,
+    body,
+    sound: 'default',
+    channelId: 'restock-alerts',
+    data: {
+      type: 'restock',
+      productId: payload.productId,
+      alertId: payload.alertId,
+      retailer: payload.retailer,
+      url: payload.url,
+    },
+  }));
+
+  return sendExpoPushBatch(messages);
+}
+
 /** Process notification jobs */
 export const notificationWorker = connection && redis
   ? new Worker(
@@ -151,14 +215,110 @@ export const notificationWorker = connection && redis
               return { sent: false, reason: 'deduplicated' };
             }
 
-            const sent = await sendEmail(payload.userEmail, subject, html);
+            // Resolve per-user notification prefs (email/push opt-outs, quiet hours)
+            const [userRow] = await db
+              .select({ notificationPrefs: users.notificationPrefs })
+              .from(users)
+              .where(eq(users.id, payload.userId))
+              .limit(1);
+            const prefs = resolvePrefs(userRow?.notificationPrefs);
+            const wantEmail = shouldSend(prefs, 'restock', 'email');
+            const wantPush = shouldSend(prefs, 'restock', 'push');
 
-            if (sent) {
-              // Mark as sent for 1 hour
+            if (!wantEmail && !wantPush) {
+              logger.info(
+                { userId: payload.userId },
+                'Notification suppressed by user prefs',
+              );
+              return { sent: false, reason: 'user_prefs' };
+            }
+
+            // Fan out over email + push in parallel — we want both channels
+            // to fire independently, not short-circuit if one fails.
+            const [emailSent, pushResult] = await Promise.all([
+              wantEmail
+                ? sendEmail(payload.userEmail, subject, html)
+                : Promise.resolve(false),
+              wantPush ? sendRestockPush(payload) : Promise.resolve({ ok: 0, failed: 0, disabled: 0 }),
+            ]);
+
+            if (emailSent || pushResult.ok > 0) {
+              // Mark as sent for 1 hour (any channel delivery counts)
               await redis!.set(dedupeKey, '1', 'EX', 3600);
             }
 
-            return { sent, type: 'restock', retailer: payload.retailer };
+            return {
+              sent: emailSent || pushResult.ok > 0,
+              type: 'restock',
+              retailer: payload.retailer,
+              email: emailSent,
+              push: pushResult,
+            };
+          }
+
+          case 'price_target': {
+            const name = payload.displayName || 'Collector';
+            const subject = `🎯 ${payload.productName} hit your target`;
+            const html = `<!doctype html><html><body style="margin:0;padding:0;background:#0B0B18;color:#F9FAFB;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+              <div style="max-width:560px;margin:0 auto;padding:28px 24px;">
+                <div style="text-align:center;margin-bottom:20px;">
+                  <h1 style="margin:0;color:#7F77DD;font-size:26px;">GrailIQ</h1>
+                </div>
+                <div style="padding:20px;background:linear-gradient(135deg,rgba(34,197,94,0.12),rgba(34,197,94,0.02));border:1px solid rgba(34,197,94,0.3);border-radius:14px;">
+                  <p style="margin:0;font-size:11px;color:#22C55E;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;">🎯 Target Hit</p>
+                  <p style="margin:6px 0 2px;font-size:18px;color:#F9FAFB;font-weight:700;">${escape(payload.productName)}</p>
+                  <p style="margin:0;font-size:14px;color:#9CA3AF;">
+                    Was targeting <strong style="color:#F9FAFB;">$${payload.targetPrice.toFixed(2)}</strong> — now at
+                    <strong style="color:#22C55E;">$${payload.currentPrice.toFixed(2)}</strong>
+                  </p>
+                </div>
+                <p style="margin:18px 0 0;font-size:14px;color:#D1D5DB;line-height:1.55;">Hey ${escape(name)}, the watchlist item you set a target on just hit. This is a one-time notification per drop — if the price bounces back and dips again, we'll ping you again.</p>
+                <p style="margin:22px 0 0;text-align:center;">
+                  <a href="https://grailiq.com/app/products/${payload.productId}" style="display:inline-block;background:#7F77DD;color:#fff;padding:10px 22px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px;">Open on GrailIQ →</a>
+                </p>
+              </div></body></html>`;
+
+            const [userRow] = await db
+              .select({ notificationPrefs: users.notificationPrefs })
+              .from(users)
+              .where(eq(users.id, payload.userId))
+              .limit(1);
+            const prefs = resolvePrefs(userRow?.notificationPrefs);
+            const wantEmail = shouldSend(prefs, 'priceTarget', 'email');
+            const wantPush = shouldSend(prefs, 'priceTarget', 'push');
+            if (!wantEmail && !wantPush) {
+              return { sent: false, reason: 'user_prefs' };
+            }
+
+            const [emailSent, pushResult] = await Promise.all([
+              wantEmail
+                ? sendEmail(payload.userEmail, subject, html)
+                : Promise.resolve(false),
+              wantPush
+                ? (async () => {
+                    const tokens = await getUserPushTokens(payload.userId);
+                    if (tokens.length === 0) return { ok: 0, failed: 0, disabled: 0 };
+                    const title = `🎯 Target hit on GrailIQ`;
+                    const body = `${payload.productName} dropped to $${payload.currentPrice.toFixed(2)}.`;
+                    const messages: PushMessage[] = tokens.map((to) => ({
+                      to,
+                      title,
+                      body,
+                      sound: 'default',
+                      channelId: 'restock-alerts',
+                      data: {
+                        type: 'price_target',
+                        productId: payload.productId,
+                        watchlistId: payload.watchlistId,
+                        target: payload.targetPrice,
+                        price: payload.currentPrice,
+                      },
+                    }));
+                    return sendExpoPushBatch(messages);
+                  })()
+                : Promise.resolve({ ok: 0, failed: 0, disabled: 0 }),
+            ]);
+            return { sent: emailSent || pushResult.ok > 0, type: 'price_target', email: emailSent, push: pushResult };
           }
 
           default:

@@ -1,7 +1,7 @@
 import { Worker, Job } from 'bullmq';
 import { redis } from '../../config/redis.js';
 import { db } from '../../config/database.js';
-import { products, priceHistory, sets } from '../../db/schema.js';
+import { products, priceHistory, sets, scoreHistory } from '../../db/schema.js';
 import { eq, desc, sql } from 'drizzle-orm';
 import { logger } from '../../lib/logger.js';
 
@@ -180,6 +180,25 @@ export const scoreWorker = connection
                 updatedAt: new Date(),
               })
               .where(eq(products.id, product.id));
+
+            // Snapshot to score_history — enables real "top movers this week".
+            // One row per day per product (skip if we already wrote one today).
+            const todayStart = new Date();
+            todayStart.setUTCHours(0, 0, 0, 0);
+            const existingToday = await db
+              .select({ id: scoreHistory.id })
+              .from(scoreHistory)
+              .where(
+                sql`${scoreHistory.productId} = ${product.id} AND ${scoreHistory.recordedAt} >= ${todayStart.toISOString()}`,
+              )
+              .limit(1);
+            if (existingToday.length === 0) {
+              await db.insert(scoreHistory).values({
+                productId: product.id,
+                score: score.toFixed(1),
+                signal,
+              });
+            }
 
             updated++;
           } catch (error) {

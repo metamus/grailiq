@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useProduct, usePriceHistory } from '@/hooks/useProducts';
+import { useIsWatching, useToggleWatch } from '@/hooks/useWatchlist';
 import { Spinner } from '@/components/ui/Spinner';
 import { PriceChart } from '@/components/charts/PriceChart';
 import { AddToPortfolioModal } from '@/components/modals/AddToPortfolioModal';
 import { CreateAlertModal } from '@/components/modals/CreateAlertModal';
-import { formatPrice, formatDate, formatPercentage, getChangeColor, getSignalVariant } from '@/lib/utils';
+import { formatPrice, formatDate, formatPercentage, getSignalVariant } from '@/lib/utils';
 import type { TimeRange } from '@/types';
 import {
   ArrowLeft,
@@ -14,12 +15,14 @@ import {
   Target,
   Bell,
   Plus,
-  Shield,
   BarChart3,
   Calendar,
   ArrowUpRight,
   ArrowDownRight,
   Minus,
+  Sparkles,
+  Gauge,
+  Heart,
 } from 'lucide-react';
 
 const typeLabels: Record<string, string> = {
@@ -44,14 +47,37 @@ const typeIcons: Record<string, string> = {
   other: '📋',
 };
 
-const signalColors: Record<string, { bg: string; text: string; border: string; icon: string }> = {
-  buy: { bg: 'bg-emerald-500/15', text: 'text-emerald-400', border: 'border-emerald-500/30', icon: '🟢' },
-  hold: { bg: 'bg-blue-500/15', text: 'text-blue-400', border: 'border-blue-500/30', icon: '🔵' },
-  watch: { bg: 'bg-amber-500/15', text: 'text-amber-400', border: 'border-amber-500/30', icon: '🟡' },
-  avoid: { bg: 'bg-red-500/15', text: 'text-red-400', border: 'border-red-500/30', icon: '🔴' },
+const signalStyles: Record<
+  string,
+  { bg: string; text: string; border: string; accent: string }
+> = {
+  buy: {
+    bg: 'bg-emerald-500/15',
+    text: 'text-emerald-400',
+    border: 'border-emerald-400/30',
+    accent: 'from-emerald-500/25',
+  },
+  hold: {
+    bg: 'bg-amber-500/15',
+    text: 'text-amber-400',
+    border: 'border-amber-400/30',
+    accent: 'from-amber-500/25',
+  },
+  watch: {
+    bg: 'bg-slate-500/20',
+    text: 'text-slate-300',
+    border: 'border-slate-400/30',
+    accent: 'from-slate-500/25',
+  },
+  avoid: {
+    bg: 'bg-rose-500/15',
+    text: 'text-rose-400',
+    border: 'border-rose-400/30',
+    accent: 'from-rose-500/25',
+  },
 };
 
-/** Product price detail page — premium redesign */
+/** Product detail — dark intelligence-platform theme. */
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
   const { data: product, isLoading } = useProduct(id ?? '');
@@ -59,11 +85,19 @@ export default function ProductDetail() {
   const { data: priceHistory } = usePriceHistory(id ?? '', timeRange);
   const [showPortfolioModal, setShowPortfolioModal] = useState(false);
   const [showAlertModal, setShowAlertModal] = useState(false);
+  const { watching } = useIsWatching(id);
+  const toggleWatch = useToggleWatch();
 
-  // Compute price stats from history
   const priceStats = useMemo(() => {
     if (!priceHistory || priceHistory.length === 0) {
-      return { current: null, change: null, changePct: null, high: null, low: null, avg: null };
+      return {
+        current: null as number | null,
+        change: null as number | null,
+        changePct: null as number | null,
+        high: null as number | null,
+        low: null as number | null,
+        avg: null as number | null,
+      };
     }
     const prices = priceHistory.map((p) => parseFloat(p.price));
     const current = prices[prices.length - 1];
@@ -76,7 +110,6 @@ export default function ProductDetail() {
     return { current, change, changePct, high, low, avg };
   }, [priceHistory]);
 
-  // MSRP vs market comparison
   const msrpComparison = useMemo(() => {
     if (!product?.msrp || priceStats.current === null) return null;
     const msrp = parseFloat(product.msrp);
@@ -95,176 +128,184 @@ export default function ProductDetail() {
 
   if (!product) {
     return (
-      <div className="text-center py-16">
-        <p className="text-gray-500">Product not found</p>
-        <Link to="/sets" className="text-grailiq-purple text-sm mt-2 inline-block hover:underline">
+      <div className="text-center py-16 text-white">
+        <p className="text-gray-400">Product not found</p>
+        <Link
+          to="/app/sets"
+          className="text-grailiq-purple-light text-sm mt-2 inline-block hover:underline"
+        >
           Back to Sets
         </Link>
       </div>
     );
   }
 
-  const signal = product.investmentSignal ? signalColors[product.investmentSignal] : null;
+  const signal = product.investmentSignal ? signalStyles[product.investmentSignal] : null;
   const signalInfo = getSignalVariant(product.investmentSignal);
+  const changeColor =
+    priceStats.changePct === null
+      ? 'text-gray-400'
+      : priceStats.changePct > 0
+      ? 'text-emerald-400'
+      : priceStats.changePct < 0
+      ? 'text-rose-400'
+      : 'text-gray-400';
 
   return (
-    <div>
-      {/* Back Link */}
+    <div className="text-white">
+      {/* Back link */}
       <Link
-        to={`/sets/${product.setId}`}
-        className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-grailiq-purple transition-colors mb-6"
+        to={`/app/sets/${product.setId}`}
+        className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors mb-5"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to Set
+        Back to set
       </Link>
 
-      {/* Product Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-grailiq-dark border border-white/5 p-6 mb-8">
-        <div className="absolute inset-0 bg-gradient-to-br from-violet-600/20 via-fuchsia-600/10 to-transparent" />
-        <div className="relative">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div className="flex items-start gap-4">
-              {/* Type Icon */}
-              <div className="h-16 w-16 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center text-3xl flex-shrink-0 border border-white/10">
-                {typeIcons[product.type] || '📋'}
-              </div>
-              <div>
-                <p className="text-xs font-mono text-gray-400 mb-1">
-                  {typeLabels[product.type] || product.type}
+      {/* Hero */}
+      <div
+        className={`relative overflow-hidden rounded-3xl border border-white/5 bg-grailiq-dark p-6 sm:p-8 mb-6`}
+      >
+        <div
+          className={`absolute inset-0 bg-gradient-to-br ${
+            signal?.accent ?? 'from-grailiq-purple/25'
+          } via-transparent to-transparent`}
+        />
+        <div className="absolute top-0 right-0 h-56 w-56 rounded-full bg-grailiq-purple/15 blur-3xl" />
+
+        <div className="relative flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
+          <div className="flex items-start gap-4 min-w-0">
+            <div className="h-16 w-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-3xl flex-shrink-0">
+              {typeIcons[product.type] || '📋'}
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-grailiq-purple-light mb-1">
+                {typeLabels[product.type] || product.type}
+              </p>
+              <h1 className="text-2xl sm:text-3xl font-bold leading-tight">{product.name}</h1>
+              {product.msrp && (
+                <p className="text-sm text-gray-400 mt-2 flex items-center gap-1.5">
+                  <DollarSign className="h-3.5 w-3.5" />
+                  MSRP {formatPrice(product.msrp)}
                 </p>
-                <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight">
-                  {product.name}
-                </h1>
-                {product.msrp && (
-                  <p className="text-sm text-gray-400 mt-2 flex items-center gap-1.5">
-                    <DollarSign className="h-3.5 w-3.5" />
-                    MSRP {formatPrice(product.msrp)}
-                  </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-2 flex-shrink-0">
+            <button
+              onClick={() => id && toggleWatch.mutate(id)}
+              disabled={toggleWatch.isPending}
+              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all ${
+                watching
+                  ? 'border-rose-400/40 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20'
+                  : 'border-white/15 bg-white/[0.03] text-white hover:border-white/25 hover:bg-white/[0.06]'
+              }`}
+              aria-label={watching ? 'Remove from watchlist' : 'Add to watchlist'}
+            >
+              <Heart className={`h-4 w-4 ${watching ? 'fill-current' : ''}`} />
+              {watching ? 'Watching' : 'Watch'}
+            </button>
+            <button
+              onClick={() => setShowAlertModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/15 bg-white/[0.03] text-sm font-semibold text-white hover:border-white/25 hover:bg-white/[0.06] transition-all"
+            >
+              <Bell className="h-4 w-4" />
+              Alert Me
+            </button>
+            <button
+              onClick={() => setShowPortfolioModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-grailiq-purple to-grailiq-purple-light text-sm font-semibold text-white shadow-lg shadow-grailiq-purple/30 transition-all hover:shadow-grailiq-purple/50 hover:brightness-110"
+            >
+              <Plus className="h-4 w-4" />
+              Add to Portfolio
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        <StatCard
+          icon={DollarSign}
+          label="Market Price"
+          value={priceStats.current !== null ? formatPrice(priceStats.current) : '—'}
+          accent="purple"
+          sub={
+            priceStats.change !== null ? (
+              <span className={`inline-flex items-center gap-1 text-sm font-semibold ${changeColor}`}>
+                {priceStats.change > 0 ? (
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                ) : priceStats.change < 0 ? (
+                  <ArrowDownRight className="h-3.5 w-3.5" />
+                ) : (
+                  <Minus className="h-3.5 w-3.5" />
                 )}
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-2 flex-shrink-0">
-              <button
-                onClick={() => setShowAlertModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 backdrop-blur-sm border border-white/10 text-sm font-medium text-white transition-all"
+                {formatPercentage(priceStats.changePct ?? 0)}
+              </span>
+            ) : null
+          }
+        />
+        <StatCard
+          icon={Target}
+          label="vs MSRP"
+          value={msrpComparison ? `${msrpComparison.isAbove ? '+' : ''}${formatPrice(msrpComparison.diff)}` : '—'}
+          accent={msrpComparison?.isAbove === false ? 'rose' : 'emerald'}
+          sub={
+            msrpComparison ? (
+              <span
+                className={`text-sm font-semibold ${
+                  msrpComparison.isAbove ? 'text-emerald-400' : 'text-rose-400'
+                }`}
               >
-                <Bell className="h-4 w-4" />
-                Alert Me
-              </button>
-              <button
-                onClick={() => setShowPortfolioModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-grailiq-purple hover:bg-grailiq-purple-dark text-sm font-medium text-white transition-all shadow-lg shadow-grailiq-purple/25"
-              >
-                <Plus className="h-4 w-4" />
-                Add to Portfolio
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats Cards Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {/* Current Price */}
-        <div className="relative overflow-hidden rounded-xl bg-white border border-gray-100 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-gray-400 uppercase tracking-wide font-medium">Market Price</span>
-            <DollarSign className="h-4 w-4 text-gray-300" />
-          </div>
-          <p className="text-2xl font-bold text-gray-900">
-            {priceStats.current !== null ? formatPrice(priceStats.current) : '—'}
-          </p>
-          {priceStats.change !== null && (
-            <div className={`flex items-center gap-1 mt-1 text-sm font-medium ${getChangeColor(priceStats.changePct)}`}>
-              {priceStats.change > 0 ? (
-                <ArrowUpRight className="h-3.5 w-3.5" />
-              ) : priceStats.change < 0 ? (
-                <ArrowDownRight className="h-3.5 w-3.5" />
-              ) : (
-                <Minus className="h-3.5 w-3.5" />
-              )}
-              {formatPercentage(priceStats.changePct)}
-            </div>
-          )}
-        </div>
-
-        {/* MSRP Comparison */}
-        <div className="relative overflow-hidden rounded-xl bg-white border border-gray-100 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-gray-400 uppercase tracking-wide font-medium">vs MSRP</span>
-            <Target className="h-4 w-4 text-gray-300" />
-          </div>
-          {msrpComparison ? (
-            <>
-              <p className={`text-2xl font-bold ${msrpComparison.isAbove ? 'text-grailiq-green' : 'text-grailiq-red'}`}>
-                {msrpComparison.isAbove ? '+' : ''}{formatPrice(msrpComparison.diff)}
-              </p>
-              <p className={`text-sm font-medium mt-1 ${msrpComparison.isAbove ? 'text-grailiq-green' : 'text-grailiq-red'}`}>
                 {formatPercentage(msrpComparison.pct)} from MSRP
-              </p>
-            </>
-          ) : (
-            <p className="text-2xl font-bold text-gray-300">—</p>
-          )}
-        </div>
-
-        {/* Range High/Low */}
-        <div className="relative overflow-hidden rounded-xl bg-white border border-gray-100 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-gray-400 uppercase tracking-wide font-medium">Period Range</span>
-            <BarChart3 className="h-4 w-4 text-gray-300" />
-          </div>
-          {priceStats.high !== null ? (
-            <>
-              <div className="flex items-baseline gap-2">
-                <span className="text-lg font-bold text-grailiq-green">{formatPrice(priceStats.high)}</span>
-                <span className="text-xs text-gray-400">high</span>
-              </div>
-              <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="text-lg font-bold text-grailiq-red">{formatPrice(priceStats.low)}</span>
-                <span className="text-xs text-gray-400">low</span>
-              </div>
-            </>
-          ) : (
-            <p className="text-2xl font-bold text-gray-300">—</p>
-          )}
-        </div>
-
-        {/* GrailIQ Score */}
-        <div className="relative overflow-hidden rounded-xl bg-white border border-gray-100 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-gray-400 uppercase tracking-wide font-medium">GrailIQ Score</span>
-            <Shield className="h-4 w-4 text-gray-300" />
-          </div>
-          {product.grailiqScore ? (
-            <>
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-grailiq-purple" />
-                <p className="text-2xl font-bold text-grailiq-purple">{product.grailiqScore}</p>
-              </div>
-              {signal && (
-                <span className={`inline-flex items-center gap-1.5 mt-2 text-xs font-semibold px-2.5 py-1 rounded-full ${signal.bg} ${signal.text} border ${signal.border}`}>
-                  {signal.icon} {signalInfo.label}
-                </span>
-              )}
-            </>
-          ) : (
-            <>
-              <p className="text-2xl font-bold text-gray-300">—</p>
-              <p className="text-xs text-gray-400 mt-1">Awaiting data</p>
-            </>
-          )}
-        </div>
+              </span>
+            ) : null
+          }
+        />
+        <StatCard
+          icon={BarChart3}
+          label="Period Range"
+          value={priceStats.high !== null ? formatPrice(priceStats.high) : '—'}
+          accent="fuchsia"
+          sub={
+            priceStats.low !== null ? (
+              <span className="text-xs text-gray-400">
+                low {formatPrice(priceStats.low)}
+              </span>
+            ) : null
+          }
+        />
+        <StatCard
+          icon={Gauge}
+          label="GrailIQ Score"
+          value={product.grailiqScore ?? '—'}
+          accent="gold"
+          sub={
+            signal ? (
+              <span
+                className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${signal.bg} ${signal.text} ${signal.border}`}
+              >
+                {signalInfo.label}
+              </span>
+            ) : (
+              <span className="text-xs text-gray-500">Awaiting data</span>
+            )
+          }
+        />
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Price Chart — 2 cols */}
+      {/* Main content */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        {/* Chart */}
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-xl border border-gray-100 p-5">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Price History</h2>
+          <div className="rounded-2xl border border-white/5 bg-grailiq-dark p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold">Price history</h2>
+              <span className="text-[10px] uppercase tracking-wider text-gray-500">
+                Source: TCGPlayer · eBay
+              </span>
+            </div>
             <PriceChart
               data={priceHistory ?? []}
               timeRange={timeRange}
@@ -272,97 +313,107 @@ export default function ProductDetail() {
             />
             {(!priceHistory || priceHistory.length === 0) && (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <BarChart3 className="h-10 w-10 text-gray-200 mb-3" />
-                <p className="text-sm text-gray-400">No price data recorded yet</p>
-                <p className="text-xs text-gray-300 mt-1">Prices will appear once tracking begins</p>
+                <div className="h-12 w-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-3">
+                  <BarChart3 className="h-6 w-6 text-gray-500" />
+                </div>
+                <p className="text-sm text-white font-semibold">No price data yet</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Prices start tracking as soon as this product hits the hot tier.
+                </p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Sidebar — 1 col */}
-        <div className="space-y-5">
-          {/* Investment Signal Card */}
+        {/* Sidebar */}
+        <div className="space-y-4">
+          {/* Signal card */}
           {product.investmentSignal && signal && (
-            <div className={`rounded-xl border p-5 ${signal.bg} ${signal.border}`}>
-              <h3 className={`text-sm font-semibold uppercase tracking-wide ${signal.text} mb-3`}>
-                Investment Signal
-              </h3>
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-3xl">{signal.icon}</span>
-                <span className={`text-2xl font-bold ${signal.text}`}>{signalInfo.label}</span>
+            <div
+              className={`relative overflow-hidden rounded-2xl border ${signal.border} bg-grailiq-dark p-5`}
+            >
+              <div
+                className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${signal.accent} via-transparent to-transparent`}
+              />
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className={`h-4 w-4 ${signal.text}`} />
+                  <span
+                    className={`text-[10px] font-bold uppercase tracking-wider ${signal.text}`}
+                  >
+                    Investment Signal
+                  </span>
+                </div>
+                <p className={`text-2xl font-bold ${signal.text}`}>{signalInfo.label}</p>
+                {product.signalRationale && (
+                  <p className="text-sm text-gray-300 leading-relaxed mt-2">
+                    {product.signalRationale}
+                  </p>
+                )}
               </div>
-              {product.signalRationale && (
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  {product.signalRationale}
-                </p>
-              )}
             </div>
           )}
 
-          {/* Product Info */}
-          <div className="bg-white rounded-xl border border-gray-100 p-5">
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">
+          {/* Product info */}
+          <div className="rounded-2xl border border-white/5 bg-grailiq-dark p-5">
+            <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-4">
               Product Details
             </h3>
             <dl className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-gray-400">Type</dt>
-                <dd className="font-medium text-gray-900 flex items-center gap-1.5">
+              <Detail label="Type" value={
+                <span className="inline-flex items-center gap-1.5 text-white">
                   <span>{typeIcons[product.type] || '📋'}</span>
                   {typeLabels[product.type] || product.type}
-                </dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-gray-400">MSRP</dt>
-                <dd className="font-medium text-gray-900">{formatPrice(product.msrp)}</dd>
-              </div>
+                </span>
+              } />
+              <Detail label="MSRP" value={<span className="text-white">{formatPrice(product.msrp)}</span>} />
               {product.tcgplayerId && (
-                <div className="flex justify-between">
-                  <dt className="text-gray-400">TCGPlayer ID</dt>
-                  <dd className="font-mono text-xs text-gray-600">{product.tcgplayerId}</dd>
-                </div>
+                <Detail
+                  label="TCGPlayer ID"
+                  value={<span className="font-mono text-xs text-gray-300">{product.tcgplayerId}</span>}
+                />
               )}
-              <div className="flex justify-between">
-                <dt className="text-gray-400">Added</dt>
-                <dd className="font-medium text-gray-900 flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5 text-gray-400" />
-                  {formatDate(product.createdAt)}
-                </dd>
-              </div>
+              <Detail
+                label="Added"
+                value={
+                  <span className="inline-flex items-center gap-1.5 text-white">
+                    <Calendar className="h-3.5 w-3.5 text-gray-500" />
+                    {formatDate(product.createdAt)}
+                  </span>
+                }
+              />
             </dl>
           </div>
 
-          {/* Quick Stats */}
+          {/* Price stats */}
           {priceStats.avg !== null && (
-            <div className="bg-white rounded-xl border border-gray-100 p-5">
-              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">
+            <div className="rounded-2xl border border-white/5 bg-grailiq-dark p-5">
+              <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-4">
                 Price Statistics
               </h3>
               <dl className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <dt className="text-gray-400">Average</dt>
-                  <dd className="font-medium text-gray-900">{formatPrice(priceStats.avg)}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-gray-400">Period High</dt>
-                  <dd className="font-medium text-grailiq-green">{formatPrice(priceStats.high)}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-gray-400">Period Low</dt>
-                  <dd className="font-medium text-grailiq-red">{formatPrice(priceStats.low)}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-gray-400">Data Points</dt>
-                  <dd className="font-medium text-gray-900">{priceHistory?.length ?? 0}</dd>
-                </div>
+                <Detail
+                  label="Average"
+                  value={<span className="text-white">{formatPrice(priceStats.avg)}</span>}
+                />
+                <Detail
+                  label="Period high"
+                  value={<span className="text-emerald-400">{formatPrice(priceStats.high)}</span>}
+                />
+                <Detail
+                  label="Period low"
+                  value={<span className="text-rose-400">{formatPrice(priceStats.low)}</span>}
+                />
+                <Detail
+                  label="Data points"
+                  value={<span className="text-white">{priceHistory?.length ?? 0}</span>}
+                />
               </dl>
             </div>
           )}
         </div>
       </div>
 
-      {/* Modals */}
       <AddToPortfolioModal
         isOpen={showPortfolioModal}
         onClose={() => setShowPortfolioModal(false)}
@@ -374,6 +425,55 @@ export default function ProductDetail() {
         onClose={() => setShowAlertModal(false)}
         product={product}
       />
+    </div>
+  );
+}
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  accent,
+  sub,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string | number;
+  accent: 'purple' | 'gold' | 'emerald' | 'rose' | 'fuchsia';
+  sub?: React.ReactNode;
+}) {
+  const classes = {
+    purple: 'bg-grailiq-purple/15 border-grailiq-purple/30 text-grailiq-purple-light',
+    gold: 'bg-grailiq-gold/15 border-grailiq-gold/30 text-grailiq-gold-light',
+    emerald: 'bg-emerald-500/15 border-emerald-400/30 text-emerald-400',
+    rose: 'bg-rose-500/15 border-rose-400/30 text-rose-400',
+    fuchsia: 'bg-fuchsia-500/15 border-fuchsia-400/30 text-fuchsia-300',
+  }[accent];
+
+  return (
+    <div className="rounded-2xl border border-white/5 bg-grailiq-dark p-4">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
+          {label}
+        </span>
+        <div className={`h-8 w-8 rounded-xl border flex items-center justify-center ${classes}`}>
+          <Icon className="h-4 w-4" />
+        </div>
+      </div>
+      <p className="text-2xl font-bold text-white tabular-nums flex items-center gap-2">
+        {typeof value === 'number' ? value : value}
+        {typeof value === 'number' && <TrendingUp className="h-4 w-4 text-grailiq-purple-light" />}
+      </p>
+      {sub && <div className="mt-1">{sub}</div>}
+    </div>
+  );
+}
+
+function Detail({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex justify-between items-center gap-4">
+      <dt className="text-gray-500 text-xs uppercase tracking-wider">{label}</dt>
+      <dd className="font-semibold">{value}</dd>
     </div>
   );
 }

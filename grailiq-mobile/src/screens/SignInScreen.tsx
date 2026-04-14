@@ -13,8 +13,9 @@ import {
 } from 'react-native';
 import { colors, spacing, fontSize, borderRadius } from '../theme/colors';
 import { supabase } from '../lib/supabase';
+import { signInWithProvider } from '../lib/oauth';
 
-type AuthMode = 'sign_in' | 'sign_up';
+type AuthMode = 'sign_in' | 'sign_up' | 'reset';
 
 export function SignInScreen() {
   const [loading, setLoading] = useState(false);
@@ -23,11 +24,11 @@ export function SignInScreen() {
   const [password, setPassword] = useState('');
 
   const handleEmailAuth = async () => {
-    if (!email || !password) {
-      Alert.alert('Missing fields', 'Please enter both email and password.');
+    if (!email) {
+      Alert.alert('Missing email', 'Enter your email to continue.');
       return;
     }
-    if (password.length < 6) {
+    if (mode !== 'reset' && password.length < 6) {
       Alert.alert('Weak password', 'Password must be at least 6 characters.');
       return;
     }
@@ -42,19 +43,38 @@ export function SignInScreen() {
         if (error) throw error;
         Alert.alert(
           'Check your email',
-          'We sent you a confirmation link. Please verify your email to continue.',
+          'We sent you a confirmation link. Verify to continue.',
         );
-      } else {
+      } else if (mode === 'sign_in') {
         const { error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
         });
         if (error) throw error;
+      } else {
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+        if (error) throw error;
+        Alert.alert('Check your email', 'Password reset link sent.');
+        setMode('sign_in');
       }
     } catch (error: any) {
       Alert.alert('Auth error', error.message || 'Something went wrong');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOAuth = async (provider: 'google' | 'apple') => {
+    setLoading(true);
+    const result = await signInWithProvider(provider);
+    setLoading(false);
+    if (!result.ok && result.error !== 'canceled') {
+      Alert.alert(
+        'Sign-in failed',
+        result.error === 'no_auth_url'
+          ? `${provider} is not enabled in Supabase Auth yet.`
+          : (result.error ?? 'Try again in a moment.'),
+      );
     }
   };
 
@@ -82,6 +102,37 @@ export function SignInScreen() {
           <FeatureRow emoji="🧠" text="GrailIQ Score — AI-powered investment signals" />
         </View>
 
+        {/* OAuth */}
+        {mode !== 'reset' && (
+          <View style={styles.oauthGroup}>
+            <TouchableOpacity
+              style={styles.oauthButton}
+              onPress={() => handleOAuth('google')}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.oauthButtonText}>Continue with Google</Text>
+            </TouchableOpacity>
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity
+                style={[styles.oauthButton, styles.appleButton]}
+                onPress={() => handleOAuth('apple')}
+                disabled={loading}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.oauthButtonText, styles.appleButtonText]}>
+                   Continue with Apple
+                </Text>
+              </TouchableOpacity>
+            )}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or email</Text>
+              <View style={styles.dividerLine} />
+            </View>
+          </View>
+        )}
+
         {/* Email/Password Form */}
         <View style={styles.form}>
           <TextInput
@@ -94,15 +145,17 @@ export function SignInScreen() {
             autoCapitalize="none"
             autoCorrect={false}
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor={colors.textMuted}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-          />
+          {mode !== 'reset' && (
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor={colors.textMuted}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+            />
+          )}
 
           <TouchableOpacity
             style={styles.primaryButton}
@@ -113,11 +166,20 @@ export function SignInScreen() {
               <ActivityIndicator color={colors.white} />
             ) : (
               <Text style={styles.primaryButtonText}>
-                {mode === 'sign_in' ? 'Sign In' : 'Create Account'}
+                {mode === 'sign_in'
+                  ? 'Sign In'
+                  : mode === 'sign_up'
+                  ? 'Create Account'
+                  : 'Send reset link'}
               </Text>
             )}
           </TouchableOpacity>
 
+          {mode === 'sign_in' && (
+            <TouchableOpacity onPress={() => setMode('reset')} style={styles.toggleButton}>
+              <Text style={styles.toggleText}>Forgot password?</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             onPress={() => setMode(mode === 'sign_in' ? 'sign_up' : 'sign_in')}
             style={styles.toggleButton}
@@ -125,7 +187,9 @@ export function SignInScreen() {
             <Text style={styles.toggleText}>
               {mode === 'sign_in'
                 ? "Don't have an account? Sign Up"
-                : 'Already have an account? Sign In'}
+                : mode === 'sign_up'
+                ? 'Already have an account? Sign In'
+                : 'Back to sign in'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -193,6 +257,48 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     flex: 1,
     lineHeight: 20,
+  },
+  oauthGroup: {
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  oauthButton: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.overlay05,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+  },
+  oauthButtonText: {
+    color: colors.text,
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+  },
+  appleButton: {
+    backgroundColor: '#fff',
+    borderColor: '#fff',
+  },
+  appleButtonText: {
+    color: '#000',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginVertical: spacing.sm,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  dividerText: {
+    color: colors.textMuted,
+    fontSize: 10,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    fontWeight: '700',
   },
   form: {
     gap: spacing.md,

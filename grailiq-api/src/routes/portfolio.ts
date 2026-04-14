@@ -1,9 +1,13 @@
 import { FastifyInstance } from 'fastify';
 import { db } from '../config/database.js';
-import { portfolioItems, products, priceHistory } from '../db/schema.js';
+import { portfolioItems, products, priceHistory, sets } from '../db/schema.js';
 import { eq, and, desc, inArray, sql } from 'drizzle-orm';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, requireTier } from '../middleware/auth.js';
 import { z } from 'zod';
+import { generateInsurancePdf } from '../services/insurancePdf.js';
+
+/** Free-tier portfolio item cap. Paid tiers are unlimited. */
+const FREE_TIER_ITEM_CAP = 25;
 
 const addItemSchema = z.object({
   productId: z.string().uuid(),
@@ -183,6 +187,24 @@ export async function portfolioRoutes(app: FastifyInstance) {
         .send({ error: 'Validation failed', details: parsed.error.issues });
     }
 
+    // Free tier cap: block new items past the limit but let existing items
+    // edit/delete. Paid tiers have no cap.
+    if ((user.subscriptionTier ?? 'free') === 'free') {
+      const [{ count }] = await db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(portfolioItems)
+        .where(eq(portfolioItems.userId, user.id));
+      if (count >= FREE_TIER_ITEM_CAP) {
+        return reply.status(402).send({
+          error: 'free_tier_limit',
+          detail: `Free plan supports up to ${FREE_TIER_ITEM_CAP} portfolio items. Upgrade to Collector for unlimited.`,
+          currentCount: count,
+          limit: FREE_TIER_ITEM_CAP,
+          upgradeUrl: '/app/pricing',
+        });
+      }
+    }
+
     const { productId, quantity, purchasePrice, purchaseDate, source, notes } = parsed.data;
 
     const [item] = await db
@@ -219,4 +241,159 @@ export async function portfolioRoutes(app: FastifyInstance) {
 
     return reply.send({ data: deleted[0] });
   });
+
+  /**
+   * GET /portfolio/export.pdf
+   *
+   * Collector / Investor tier only. Streams an insurance-grade portfolio
+   * statement with per-holding cost basis, current value, and P&L, plus a
+   * summary. Response is a `application/pdf` stream — the client can save
+   * or print.
+   */
+  app.get(
+    '/portfolio/export.pdf',
+    { preHandler: [requireTier('collector')] },
+    async (request, reply) => {
+      const user = (request as any).user;
+      if (!user) return reply.status(401).send({ error: 'User not found' });
+
+      const rows = await db
+        .select({
+          item: portfolioItems,
+          product: products,
+          setName: sets.name,
+          setCode: sets.code,
+        })
+        .from(portfolioItems)
+        .innerJoin(products, eq(products.id, portfolioItems.productId))
+        .innerJoin(sets, eq(sets.id, products.setId))
+        .where(eq(portfolioItems.userId, user.id))
+        .orderBy(desc(portfolioItems.createdAt));
+
+      const productIds = [...new Set(rows.map((r) => r.item.productId))];
+      const latestPrices = await getLatestPricesForProducts(productIds);
+
+      let totalValue = 0;
+      let costBasis = 0;
+
+      const holdings = rows.map(({ item, product, setName, setCode }) => {
+        const quantity = item.quantity;
+        const purchasePrice = parseFloat(item.purchasePrice);
+        const currentPrice = latestPrices.get(item.productId) ?? purchasePrice;
+
+        const itemValue = currentPrice * quantity;
+        const itemCost = purchasePrice * quantity;
+        totalValue += itemValue;
+        costBasis += itemCost;
+
+        return {
+          productName: product.name,
+          setName,
+          setCode,
+          quantity,
+          purchaseDate: item.purchaseDate,
+          costBasis: itemCost,
+          currentValue: itemValue,
+          unrealizedPnl: itemValue - itemCost,
+        };
+      });
+
+      const stream = generateInsurancePdf({
+        user: { displayName: user.displayName ?? null, email: user.email },
+        summary: {
+          totalValue,
+          costBasis,
+          unrealizedPnl: totalValue - costBasis,
+          holdings: holdings.length,
+          uniqueProducts: productIds.length,
+        },
+        holdings,
+      });
+
+      reply
+        .header(
+          'Content-Disposition',
+          `attachment; filename="grailiq-portfolio-${new Date().toISOString().slice(0, 10)}.pdf"`,
+        )
+        .type('application/pdf');
+      return reply.send(stream);
+    },
+  );
+
+  /**
+   * GET /portfolio/export.csv
+   *
+   * CSV export for tax / spreadsheet workflows. Columns:
+   *   product, set_name, set_code, type, quantity, purchase_price,
+   *   purchase_date, current_price, cost_basis, current_value,
+   *   unrealized_pnl, unrealized_pnl_pct
+   *
+   * Available to all tiers — csv is a baseline capability.
+   */
+  app.get('/portfolio/export.csv', async (request, reply) => {
+    const user = (request as any).user;
+    if (!user) return reply.status(401).send({ error: 'User not found' });
+
+    const rows = await db
+      .select({
+        item: portfolioItems,
+        product: products,
+        setName: sets.name,
+        setCode: sets.code,
+      })
+      .from(portfolioItems)
+      .innerJoin(products, eq(products.id, portfolioItems.productId))
+      .innerJoin(sets, eq(sets.id, products.setId))
+      .where(eq(portfolioItems.userId, user.id))
+      .orderBy(desc(portfolioItems.createdAt));
+
+    const productIds = [...new Set(rows.map((r) => r.item.productId))];
+    const latestPrices = await getLatestPricesForProducts(productIds);
+
+    const lines: string[] = [
+      'product,set_name,set_code,type,quantity,purchase_price,purchase_date,current_price,cost_basis,current_value,unrealized_pnl,unrealized_pnl_pct',
+    ];
+    for (const { item, product, setName, setCode } of rows) {
+      const qty = item.quantity;
+      const pPrice = parseFloat(item.purchasePrice);
+      const cur = latestPrices.get(item.productId) ?? pPrice;
+      const costBasis = pPrice * qty;
+      const currentValue = cur * qty;
+      const pnl = currentValue - costBasis;
+      const pnlPct = costBasis > 0 ? (pnl / costBasis) * 100 : 0;
+      const purchaseDate = item.purchaseDate
+        ? new Date(item.purchaseDate).toISOString().slice(0, 10)
+        : '';
+      lines.push(
+        [
+          csv(product.name),
+          csv(setName),
+          setCode,
+          product.type,
+          qty,
+          pPrice.toFixed(2),
+          purchaseDate,
+          cur.toFixed(2),
+          costBasis.toFixed(2),
+          currentValue.toFixed(2),
+          pnl.toFixed(2),
+          pnlPct.toFixed(2),
+        ].join(','),
+      );
+    }
+
+    reply
+      .header(
+        'Content-Disposition',
+        `attachment; filename="grailiq-portfolio-${new Date().toISOString().slice(0, 10)}.csv"`,
+      )
+      .type('text/csv');
+    return reply.send(lines.join('\n'));
+  });
+}
+
+/** Escape a field for CSV (wraps in quotes and escapes inner quotes). */
+function csv(s: string): string {
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
 }

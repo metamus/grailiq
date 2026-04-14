@@ -1,0 +1,1 @@
+import{u as t}from"./useQuery-DDWhHxWV.js";import{a}from"./index-B4DNvwmW.js";function n(){return t({queryKey:["sets"],queryFn:async()=>{const{data:e}=await a.get("/sets");return e.data}})}function o(e){return t({queryKey:["sets",e],queryFn:async()=>{const{data:s}=await a.get(`/sets/${e}`);return s.data},enabled:!!e})}export{o as a,n as u};

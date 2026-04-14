@@ -12,6 +12,11 @@ import { setRoutes } from './routes/sets.js';
 import { portfolioRoutes } from './routes/portfolio.js';
 import { alertRoutes } from './routes/alerts.js';
 import { adminRoutes } from './routes/admin.js';
+import { pushRoutes } from './routes/push.js';
+import { stripeRoutes } from './routes/stripe.js';
+import { watchlistRoutes } from './routes/watchlist.js';
+import { meRoutes } from './routes/me.js';
+import { eventsRoutes } from './routes/events.js';
 import { pool } from './config/database.js';
 import { redis } from './config/redis.js';
 import { initJobs } from './jobs/init.js';
@@ -60,6 +65,11 @@ async function buildApp() {
   await app.register(portfolioRoutes, { prefix: '/api/v1' });
   await app.register(alertRoutes, { prefix: '/api/v1' });
   await app.register(adminRoutes, { prefix: '/api/v1' });
+  await app.register(pushRoutes, { prefix: '/api/v1' });
+  await app.register(stripeRoutes, { prefix: '/api/v1' });
+  await app.register(watchlistRoutes, { prefix: '/api/v1' });
+  await app.register(meRoutes, { prefix: '/api/v1' });
+  await app.register(eventsRoutes, { prefix: '/api/v1' });
 
   return app;
 }

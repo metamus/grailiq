@@ -1,13 +1,15 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Package, Briefcase, Bell, CreditCard, LogOut } from 'lucide-react';
+import { LayoutDashboard, Package, Briefcase, Bell, CreditCard, Heart, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { supabase } from '@/lib/supabase';
+import { OnboardingModal } from '@/components/OnboardingModal';
 
 const navItems = [
   { to: '/app', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/app/sets', icon: Package, label: 'Sets' },
   { to: '/app/portfolio', icon: Briefcase, label: 'Portfolio' },
+  { to: '/app/watchlist', icon: Heart, label: 'Watchlist' },
   { to: '/app/alerts', icon: Bell, label: 'Alerts' },
   { to: '/app/pricing', icon: CreditCard, label: 'Pricing' },
 ];
@@ -23,9 +25,9 @@ export function AppLayout() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex bg-grailiq-ink">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 bg-grailiq-dark flex-col">
+      <aside className="hidden md:flex w-64 bg-grailiq-dark border-r border-white/5 flex-col">
         {/* Header */}
         <div className="px-6 py-5 border-b border-white/10">
           <h1 className="text-xl font-bold text-white">
@@ -80,9 +82,10 @@ export function AppLayout() {
           <Outlet />
         </div>
       </main>
+      <OnboardingModal />
 
       {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 flex justify-around py-2 z-40">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 bg-grailiq-dark/95 backdrop-blur-xl border-t border-white/10 flex justify-around py-2 z-40">
         {navItems.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
@@ -91,7 +94,7 @@ export function AppLayout() {
             className={({ isActive }) =>
               cn(
                 'flex flex-col items-center gap-0.5 text-xs font-medium py-1 px-2',
-                isActive ? 'text-grailiq-purple' : 'text-gray-400',
+                isActive ? 'text-grailiq-purple-light' : 'text-gray-400 hover:text-white',
               )
             }
           >
@@ -101,7 +104,7 @@ export function AppLayout() {
         ))}
         <button
           onClick={handleSignOut}
-          className="flex flex-col items-center gap-0.5 text-xs font-medium py-1 px-2 text-gray-400 hover:text-grailiq-purple"
+          className="flex flex-col items-center gap-0.5 text-xs font-medium py-1 px-2 text-gray-400 hover:text-white"
           title="Sign out"
         >
           <LogOut className="h-5 w-5" />

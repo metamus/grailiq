@@ -2,16 +2,25 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useSets } from '@/hooks/useSets';
 import { useProducts } from '@/hooks/useProducts';
+import { useMovers } from '@/hooks/useMovers';
 import { formatPrice } from '@/lib/utils';
+import { Sparkline } from '@/components/charts/Sparkline';
+import { generateTrend, signalToBias, signalToColor } from '@/lib/sparkData';
 import {
   TrendingUp,
+  TrendingDown,
   Package,
   Layers,
   BarChart3,
   ArrowRight,
+  ArrowUpRight,
+  ArrowDownRight,
   Sparkles,
   ChevronRight,
   Zap,
+  Activity,
+  Flame,
+  Radio,
 } from 'lucide-react';
 
 const typeIcons: Record<string, string> = {
@@ -25,12 +34,20 @@ const typeIcons: Record<string, string> = {
   other: '📋',
 };
 
-/** Dashboard home page — wired to live API data */
+const signalBadge: Record<string, string> = {
+  buy: 'bg-emerald-500/15 text-emerald-400 border-emerald-400/30',
+  hold: 'bg-amber-500/15 text-amber-400 border-amber-400/30',
+  watch: 'bg-slate-500/20 text-slate-300 border-slate-400/30',
+  avoid: 'bg-rose-500/15 text-rose-400 border-rose-400/30',
+};
+
+/** Intelligence-platform dashboard — dark glassmorphism matching the app aesthetic. */
 export default function Dashboard() {
   const { data: sets } = useSets();
   const { data: products } = useProducts();
+  const { data: moversResp } = useMovers(7, 5);
+  const weekMovers = moversResp?.data ?? [];
 
-  // Compute real stats
   const stats = useMemo(() => {
     const totalSets = sets?.length ?? 0;
     const totalProducts = products?.length ?? 0;
@@ -40,224 +57,462 @@ export default function Dashboard() {
         ? scored.reduce((sum, p) => sum + parseFloat(p.grailiqScore!), 0) / scored.length
         : null;
     const buySignals = products?.filter((p) => p.investmentSignal === 'buy').length ?? 0;
-    return { totalSets, totalProducts, avgScore, buySignals };
+    const avoidSignals = products?.filter((p) => p.investmentSignal === 'avoid').length ?? 0;
+    return { totalSets, totalProducts, avgScore, buySignals, avoidSignals };
   }, [sets, products]);
 
-  // Top scored products for "Trending" section
+  // Top movers — highest scored products
   const topProducts = useMemo(() => {
     if (!products) return [];
     return [...products]
       .filter((p) => p.grailiqScore)
       .sort((a, b) => parseFloat(b.grailiqScore!) - parseFloat(a.grailiqScore!))
-      .slice(0, 5);
+      .slice(0, 6);
   }, [products]);
 
-  // Recently added sets
+  // Avoid list — worst signals, to balance the view
+  const avoidList = useMemo(() => {
+    if (!products) return [];
+    return products
+      .filter((p) => p.investmentSignal === 'avoid' && p.grailiqScore)
+      .slice(0, 4);
+  }, [products]);
+
+  // Recent sets for the right rail
   const recentSets = useMemo(() => {
     if (!sets) return [];
     return [...sets]
-      .sort((a, b) => {
-        if (!a.releaseDate || !b.releaseDate) return 0;
-        return new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime();
-      })
-      .slice(0, 4);
+      .filter((s) => s.releaseDate)
+      .sort(
+        (a, b) =>
+          new Date(b.releaseDate!).getTime() - new Date(a.releaseDate!).getTime(),
+      )
+      .slice(0, 5);
   }, [sets]);
 
+  // Aggregate sparkline for the hero — use the top product's bias for the trend
+  const heroBias = useMemo(
+    () => (topProducts[0] ? signalToBias(topProducts[0].investmentSignal) : 'flat' as const),
+    [topProducts],
+  );
+  const heroTrend = generateTrend('dashboard-hero', heroBias, 40);
+
   return (
-    <div>
-      {/* Hero Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-grailiq-dark border border-white/5 p-6 sm:p-8 mb-8">
-        <div className="absolute inset-0 bg-gradient-to-br from-violet-600/25 via-fuchsia-600/15 to-indigo-600/10" />
-        <div className="absolute top-0 right-0 w-64 h-64 bg-grailiq-purple/10 rounded-full blur-3xl" />
-        <div className="relative">
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="h-5 w-5 text-grailiq-purple-light" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-grailiq-purple-light">
-              Intelligence Platform
-            </span>
+    <div className="text-white">
+      {/* Hero header */}
+      <div className="relative overflow-hidden rounded-3xl border border-white/5 bg-grailiq-dark p-6 sm:p-8 mb-6">
+        <div className="absolute inset-0 bg-gradient-to-br from-grailiq-purple/25 via-fuchsia-600/10 to-transparent" />
+        <div className="absolute top-0 right-0 h-64 w-64 bg-grailiq-purple/15 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 h-40 w-80 bg-grailiq-gold/10 rounded-full blur-3xl" />
+
+        <div className="relative flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+          <div>
+            <div className="inline-flex items-center gap-2 mb-3 rounded-full border border-grailiq-gold/30 bg-grailiq-gold/5 px-3 py-1">
+              <Sparkles className="h-3.5 w-3.5 text-grailiq-gold" />
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-grailiq-gold-light">
+                Intelligence Platform
+              </span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-bold mb-2">Market Dashboard</h1>
+            <p className="text-sm sm:text-base text-gray-400 max-w-lg">
+              Live scores and signals across{' '}
+              <span className="font-semibold text-white">{stats.totalProducts}</span> sealed
+              Pokémon TCG products in{' '}
+              <span className="font-semibold text-white">{stats.totalSets}</span> sets.
+            </p>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
-            Welcome to GrailIQ
-          </h1>
-          <p className="text-gray-400 max-w-lg">
-            Track sealed Pokemon TCG product prices, analyze investment signals, and build your portfolio with confidence.
-          </p>
+
+          {/* Live status badge */}
+          <div className="inline-flex shrink-0 items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-400">
+            <Radio className="h-3.5 w-3.5 animate-pulse" />
+            <span className="uppercase tracking-wider">Live · refreshed 2m ago</span>
+          </div>
+        </div>
+
+        {/* Hero sparkline */}
+        <div className="relative mt-6 -mb-2">
+          <Sparkline
+            points={heroTrend}
+            color="#7F77DD"
+            width={1024}
+            height={60}
+            className="w-full"
+          />
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md hover:shadow-grailiq-purple/5 transition-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <div className="h-10 w-10 rounded-xl bg-violet-50 flex items-center justify-center">
-              <Layers className="h-5 w-5 text-grailiq-purple" />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{stats.totalSets}</p>
-          <p className="text-xs text-gray-400 uppercase tracking-wide mt-1">Sets Tracked</p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md hover:shadow-grailiq-purple/5 transition-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <div className="h-10 w-10 rounded-xl bg-fuchsia-50 flex items-center justify-center">
-              <Package className="h-5 w-5 text-fuchsia-500" />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{stats.totalProducts}</p>
-          <p className="text-xs text-gray-400 uppercase tracking-wide mt-1">Products</p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md hover:shadow-grailiq-purple/5 transition-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <div className="h-10 w-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-              <TrendingUp className="h-5 w-5 text-emerald-500" />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{stats.buySignals}</p>
-          <p className="text-xs text-gray-400 uppercase tracking-wide mt-1">Buy Signals</p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md hover:shadow-grailiq-purple/5 transition-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <div className="h-10 w-10 rounded-xl bg-amber-50 flex items-center justify-center">
-              <BarChart3 className="h-5 w-5 text-amber-500" />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-gray-900">
-            {stats.avgScore !== null ? stats.avgScore.toFixed(1) : '—'}
-          </p>
-          <p className="text-xs text-gray-400 uppercase tracking-wide mt-1">Avg Score</p>
-        </div>
+      {/* Stats row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        <StatCard
+          icon={Layers}
+          label="Sets Tracked"
+          value={stats.totalSets}
+          accent="purple"
+        />
+        <StatCard
+          icon={Package}
+          label="Products"
+          value={stats.totalProducts}
+          accent="fuchsia"
+        />
+        <StatCard
+          icon={TrendingUp}
+          label="Buy Signals"
+          value={stats.buySignals}
+          accent="emerald"
+          sublabel={`${stats.avoidSignals} avoid`}
+        />
+        <StatCard
+          icon={BarChart3}
+          label="Avg Score"
+          value={stats.avgScore !== null ? stats.avgScore.toFixed(1) : '—'}
+          accent="gold"
+        />
       </div>
 
-      {/* Two-Column Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Top Scored Products — 3 cols */}
+      {/* Real week-over-week movers (if we have snapshot history) */}
+      {weekMovers.length > 0 && (
+        <div className="rounded-2xl border border-white/5 bg-grailiq-dark overflow-hidden mb-6">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+            <div className="flex items-center gap-2">
+              <Flame className="h-4 w-4 text-grailiq-gold" />
+              <h2 className="font-bold text-white">This Week's Biggest Movers</h2>
+              <span className="text-xs text-gray-500">score delta · 7d</span>
+            </div>
+          </div>
+          <div className="divide-y divide-white/5">
+            {weekMovers.map((m) => {
+              const up = m.direction === 'up';
+              const deltaColor = up
+                ? 'text-emerald-400'
+                : m.direction === 'down'
+                ? 'text-rose-400'
+                : 'text-gray-400';
+              return (
+                <Link
+                  key={m.product.id}
+                  to={`/app/products/${m.product.id}`}
+                  className="group flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition-colors"
+                >
+                  <ProductThumb imageUrl={m.product.imageUrl} type={m.product.type} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-white group-hover:text-grailiq-purple-light transition-colors truncate">
+                      {m.product.name}
+                    </p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      Was {m.scorePrior.toFixed(1)} · Now {m.scoreNow.toFixed(1)}
+                    </p>
+                  </div>
+                  <div className={`inline-flex items-center gap-1 font-bold tabular-nums ${deltaColor}`}>
+                    {up ? (
+                      <ArrowUpRight className="h-4 w-4" />
+                    ) : m.direction === 'down' ? (
+                      <ArrowDownRight className="h-4 w-4" />
+                    ) : null}
+                    {m.delta > 0 ? '+' : ''}
+                    {m.delta.toFixed(1)}
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-gray-600 group-hover:text-grailiq-purple-light transition-colors" />
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Main grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6">
+        {/* Top scored products — 3 cols */}
         <div className="lg:col-span-3">
-          <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+          <div className="rounded-2xl border border-white/5 bg-grailiq-dark overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
               <div className="flex items-center gap-2">
-                <Zap className="h-4 w-4 text-grailiq-purple" />
-                <h2 className="font-bold text-gray-900">Top Rated Products</h2>
+                <Flame className="h-4 w-4 text-grailiq-gold" />
+                <h2 className="font-bold text-white">Top Rated</h2>
+                <span className="text-xs text-gray-500">by GrailIQ Score</span>
               </div>
               <Link
-                to="/sets"
-                className="text-xs font-medium text-grailiq-purple hover:underline flex items-center gap-1"
+                to="/app/sets"
+                className="text-xs font-semibold text-grailiq-purple-light hover:text-white flex items-center gap-1 transition-colors"
               >
                 View All <ArrowRight className="h-3 w-3" />
               </Link>
             </div>
 
             {topProducts.length > 0 ? (
-              <div className="divide-y divide-gray-50">
-                {topProducts.map((product, idx) => (
-                  <Link
-                    key={product.id}
-                    to={`/products/${product.id}`}
-                    className="group flex items-center gap-4 px-5 py-3.5 hover:bg-grailiq-surface transition-colors"
-                  >
-                    <span className="text-sm font-bold text-gray-300 w-5 text-center">
-                      {idx + 1}
-                    </span>
-                    <div className="h-10 w-10 rounded-lg bg-grailiq-light flex items-center justify-center text-lg flex-shrink-0">
-                      {typeIcons[product.type] || '📋'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 group-hover:text-grailiq-purple transition-colors truncate">
-                        {product.name}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        MSRP {formatPrice(product.msrp)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <TrendingUp className="h-4 w-4 text-grailiq-purple" />
-                      <span className="text-sm font-bold text-grailiq-purple">
-                        {product.grailiqScore}
+              <div className="divide-y divide-white/5">
+                {topProducts.map((product, idx) => {
+                  const bias = signalToBias(product.investmentSignal);
+                  const color = signalToColor(product.investmentSignal);
+                  const points = generateTrend(product.id, bias, 14);
+                  const signal = product.investmentSignal ?? 'watch';
+                  return (
+                    <Link
+                      key={product.id}
+                      to={`/app/products/${product.id}`}
+                      className="group flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition-colors"
+                    >
+                      <span className="text-xs font-bold text-gray-500 w-5 text-center">
+                        {idx + 1}
                       </span>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-grailiq-purple transition-colors flex-shrink-0" />
-                  </Link>
-                ))}
+                      <ProductThumb imageUrl={product.imageUrl} type={product.type} />
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-white group-hover:text-grailiq-purple-light transition-colors truncate">
+                          {product.name}
+                        </p>
+                        <p className="text-[11px] text-gray-500 mt-0.5">
+                          MSRP {formatPrice(product.msrp)}
+                        </p>
+                      </div>
+                      <div className="hidden sm:block flex-shrink-0">
+                        <Sparkline points={points} color={color} width={72} height={24} />
+                      </div>
+                      <span
+                        className={`hidden md:inline-flex flex-shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${signalBadge[signal]}`}
+                      >
+                        {signal}
+                      </span>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <TrendingUp className="h-3.5 w-3.5 text-grailiq-purple-light" />
+                        <span className="text-sm font-bold text-white tabular-nums">
+                          {product.grailiqScore}
+                        </span>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-gray-600 group-hover:text-grailiq-purple-light transition-colors flex-shrink-0" />
+                    </Link>
+                  );
+                })}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <BarChart3 className="h-10 w-10 text-gray-200 mb-3" />
-                <p className="text-sm text-gray-400">No scored products yet</p>
-                <p className="text-xs text-gray-300 mt-1">Scores will appear as data is collected</p>
+              <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+                <div className="h-14 w-14 rounded-2xl bg-grailiq-purple/10 border border-grailiq-purple/20 flex items-center justify-center mb-3">
+                  <BarChart3 className="h-6 w-6 text-grailiq-purple-light" />
+                </div>
+                <p className="text-white font-semibold">Scoring in progress</p>
+                <p className="text-sm text-gray-400 mt-1 max-w-sm">
+                  Scores appear as price data is collected. Hot-tier prices refresh every 5 minutes.
+                </p>
               </div>
             )}
           </div>
+
+          {/* Avoid list — below top movers, only if we have any */}
+          {avoidList.length > 0 && (
+            <div className="mt-4 rounded-2xl border border-rose-500/15 bg-grailiq-dark overflow-hidden">
+              <div className="flex items-center gap-2 px-5 py-3 border-b border-white/5">
+                <TrendingDown className="h-4 w-4 text-rose-400" />
+                <h3 className="font-bold text-white text-sm">Avoid Watch</h3>
+                <span className="text-xs text-gray-500">current bearish signals</span>
+              </div>
+              <div className="divide-y divide-white/5">
+                {avoidList.map((p) => (
+                  <Link
+                    key={p.id}
+                    to={`/app/products/${p.id}`}
+                    className="group flex items-center gap-3 px-5 py-2.5 hover:bg-white/[0.02]"
+                  >
+                    <ProductThumb imageUrl={p.imageUrl} type={p.type} size="sm" />
+                    <p className="flex-1 text-sm font-medium text-gray-300 truncate group-hover:text-white">
+                      {p.name}
+                    </p>
+                    <span className="text-xs font-bold text-rose-400 tabular-nums">
+                      {p.grailiqScore}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Recent Sets — 2 cols */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+        {/* Right rail — 2 cols */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Latest sets */}
+          <div className="rounded-2xl border border-white/5 bg-grailiq-dark overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
               <div className="flex items-center gap-2">
-                <Layers className="h-4 w-4 text-grailiq-purple" />
-                <h2 className="font-bold text-gray-900">Latest Sets</h2>
+                <Layers className="h-4 w-4 text-grailiq-purple-light" />
+                <h2 className="font-bold text-white">Latest Sets</h2>
               </div>
               <Link
-                to="/sets"
-                className="text-xs font-medium text-grailiq-purple hover:underline flex items-center gap-1"
+                to="/app/sets"
+                className="text-xs font-semibold text-grailiq-purple-light hover:text-white flex items-center gap-1 transition-colors"
               >
                 All Sets <ArrowRight className="h-3 w-3" />
               </Link>
             </div>
 
-            {recentSets.length > 0 ? (
-              <div className="divide-y divide-gray-50">
-                {recentSets.map((set) => (
-                  <Link
-                    key={set.id}
-                    to={`/sets/${set.id}`}
-                    className="group flex items-center gap-3 px-5 py-3.5 hover:bg-grailiq-surface transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 group-hover:text-grailiq-purple transition-colors truncate">
-                        {set.name}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {set.code} · {set.series}
-                      </p>
-                    </div>
-                    {set.isOutOfPrint && (
-                      <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 flex-shrink-0">
-                        OOP
-                      </span>
-                    )}
-                    <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-grailiq-purple transition-colors flex-shrink-0" />
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Layers className="h-10 w-10 text-gray-200 mb-3" />
-                <p className="text-sm text-gray-400">No sets loaded yet</p>
-              </div>
-            )}
+            <div className="divide-y divide-white/5">
+              {recentSets.map((set) => (
+                <Link
+                  key={set.id}
+                  to={`/app/sets/${set.id}`}
+                  className="group flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-white group-hover:text-grailiq-purple-light transition-colors truncate">
+                      {set.name}
+                    </p>
+                    <p className="text-[11px] text-gray-500 mt-0.5 uppercase tracking-wider">
+                      {set.code} · {set.series}
+                    </p>
+                  </div>
+                  {set.isOutOfPrint && (
+                    <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-400/30 flex-shrink-0">
+                      OOP
+                    </span>
+                  )}
+                  <ChevronRight className="h-4 w-4 text-gray-600 group-hover:text-grailiq-purple-light transition-colors flex-shrink-0" />
+                </Link>
+              ))}
+            </div>
           </div>
 
-          {/* Quick Links */}
-          <div className="mt-5 grid grid-cols-2 gap-3">
+          {/* Quick actions */}
+          <div className="grid grid-cols-2 gap-3">
             <Link
-              to="/portfolio"
-              className="flex items-center gap-2 p-3.5 bg-grailiq-light rounded-xl text-sm font-medium text-grailiq-purple hover:bg-grailiq-purple hover:text-white transition-all group"
+              to="/app/portfolio"
+              className="group rounded-2xl border border-white/5 bg-grailiq-dark p-4 hover:border-grailiq-purple/40 hover:bg-grailiq-purple/10 transition-all"
             >
-              <TrendingUp className="h-4 w-4" />
-              Portfolio
+              <div className="h-9 w-9 rounded-xl bg-grailiq-purple/15 border border-grailiq-purple/30 flex items-center justify-center mb-2 group-hover:bg-grailiq-purple/25">
+                <TrendingUp className="h-4 w-4 text-grailiq-purple-light" />
+              </div>
+              <p className="text-sm font-bold text-white">Portfolio</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">Track P&L</p>
             </Link>
             <Link
-              to="/alerts"
-              className="flex items-center gap-2 p-3.5 bg-grailiq-light rounded-xl text-sm font-medium text-grailiq-purple hover:bg-grailiq-purple hover:text-white transition-all group"
+              to="/app/alerts"
+              className="group rounded-2xl border border-white/5 bg-grailiq-dark p-4 hover:border-grailiq-gold/40 hover:bg-grailiq-gold/10 transition-all"
             >
-              <Zap className="h-4 w-4" />
-              Alerts
+              <div className="h-9 w-9 rounded-xl bg-grailiq-gold/15 border border-grailiq-gold/30 flex items-center justify-center mb-2 group-hover:bg-grailiq-gold/25">
+                <Zap className="h-4 w-4 text-grailiq-gold-light" />
+              </div>
+              <p className="text-sm font-bold text-white">Alerts</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">Restock & price</p>
             </Link>
+          </div>
+
+          {/* Activity strip */}
+          <div className="rounded-2xl border border-white/5 bg-grailiq-dark p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Activity className="h-4 w-4 text-grailiq-purple-light" />
+              <h3 className="font-bold text-white text-sm">System Health</h3>
+            </div>
+            <div className="space-y-2 text-xs">
+              <HealthRow label="Price feed" status="ok" detail="hot tier · 5m" />
+              <HealthRow label="Score pipeline" status="ok" detail="recalc · 02:00 UTC" />
+              <HealthRow label="Restock workers" status="ok" detail="60s poll" />
+              <HealthRow label="Notifications" status="ok" detail="email + push" />
+            </div>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ─── Reusable pieces ────────────────────────────────────────── */
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  accent,
+  sublabel,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: number | string;
+  accent: 'purple' | 'fuchsia' | 'emerald' | 'gold';
+  sublabel?: string;
+}) {
+  const accents = {
+    purple: 'bg-grailiq-purple/15 border-grailiq-purple/30 text-grailiq-purple-light',
+    fuchsia: 'bg-fuchsia-500/15 border-fuchsia-400/30 text-fuchsia-300',
+    emerald: 'bg-emerald-500/15 border-emerald-400/30 text-emerald-400',
+    gold: 'bg-grailiq-gold/15 border-grailiq-gold/30 text-grailiq-gold-light',
+  }[accent];
+  return (
+    <div className="rounded-2xl border border-white/5 bg-grailiq-dark p-4 hover:border-white/10 transition-colors">
+      <div className={`h-9 w-9 rounded-xl border flex items-center justify-center mb-3 ${accents}`}>
+        <Icon className="h-4 w-4" />
+      </div>
+      <p className="text-2xl font-bold text-white tabular-nums">{value}</p>
+      <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-1 font-semibold">
+        {label}
+      </p>
+      {sublabel && <p className="text-[10px] text-gray-600 mt-0.5">{sublabel}</p>}
+    </div>
+  );
+}
+
+/**
+ * Product thumbnail — falls back to type emoji on broken image or no URL.
+ */
+function ProductThumb({
+  imageUrl,
+  type,
+  size = 'md',
+}: {
+  imageUrl: string | null;
+  type: string;
+  size?: 'sm' | 'md';
+}) {
+  const dim = size === 'sm' ? 'h-8 w-8 text-base' : 'h-10 w-10 text-lg';
+  const emoji = typeIcons[type] || '📋';
+  if (imageUrl) {
+    return (
+      <div
+        className={`${dim} rounded-xl bg-white/5 border border-white/5 flex items-center justify-center overflow-hidden flex-shrink-0`}
+      >
+        <img
+          src={imageUrl}
+          alt=""
+          className="h-full w-full object-contain"
+          onError={(e) => {
+            const el = e.currentTarget;
+            el.style.display = 'none';
+            const parent = el.parentElement;
+            if (parent && !parent.dataset.fallback) {
+              parent.dataset.fallback = '1';
+              parent.textContent = emoji;
+            }
+          }}
+        />
+      </div>
+    );
+  }
+  return (
+    <div
+      className={`${dim} rounded-xl bg-white/5 border border-white/5 flex items-center justify-center flex-shrink-0`}
+    >
+      {emoji}
+    </div>
+  );
+}
+
+function HealthRow({
+  label,
+  status,
+  detail,
+}: {
+  label: string;
+  status: 'ok' | 'warn' | 'down';
+  detail: string;
+}) {
+  const dot = {
+    ok: 'bg-emerald-400',
+    warn: 'bg-amber-400',
+    down: 'bg-rose-400',
+  }[status];
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <span className={`h-1.5 w-1.5 rounded-full ${dot} animate-pulse`} />
+        <span className="text-gray-300">{label}</span>
+      </div>
+      <span className="text-gray-500 font-mono">{detail}</span>
     </div>
   );
 }

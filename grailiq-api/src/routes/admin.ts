@@ -1,11 +1,27 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql, desc } from 'drizzle-orm';
 import { syncSetsFromPokemonTCG, generateSealedProductsForSets } from '../services/pokemontcg.js';
 import { fetchTCGPlayerPrices } from '../services/tcgplayer.js';
 import { fetchEbayPrices } from '../services/ebay.js';
 import { db } from '../config/database.js';
-import { retailerProducts } from '../db/schema.js';
+import {
+  retailerProducts,
+  priceHistory,
+  products,
+  users,
+  alertSubscriptions,
+  portfolioItems,
+  pushTokens,
+} from '../db/schema.js';
+import {
+  priceUpdateQueue,
+  restockCheckQueue,
+  notificationQueue,
+  scoreQueue,
+  digestQueue,
+} from '../jobs/queues.js';
+import { redis } from '../config/redis.js';
 import { logger } from '../lib/logger.js';
 
 const retailerEnumValues = [
@@ -167,5 +183,241 @@ export async function adminRoutes(app: FastifyInstance) {
         message: (error as Error).message,
       });
     }
+  });
+
+  /**
+   * GET /admin/retailer-mappings?limit=50&offset=0
+   * List all retailer mappings with joined product name for the editor UI.
+   */
+  app.get<{ Querystring: { limit?: string; offset?: string } }>(
+    '/admin/retailer-mappings',
+    async (request, reply) => {
+      const limit = Math.min(500, Math.max(1, parseInt(request.query.limit ?? '100', 10)));
+      const offset = Math.max(0, parseInt(request.query.offset ?? '0', 10));
+
+      const rows = await db
+        .select({
+          id: retailerProducts.id,
+          productId: retailerProducts.productId,
+          productName: products.name,
+          retailer: retailerProducts.retailer,
+          url: retailerProducts.url,
+          sku: retailerProducts.sku,
+          isEnabled: retailerProducts.isEnabled,
+          lastInStock: retailerProducts.lastInStock,
+          lastCheckedAt: retailerProducts.lastCheckedAt,
+          lastPrice: retailerProducts.lastPrice,
+          lastError: retailerProducts.lastError,
+        })
+        .from(retailerProducts)
+        .innerJoin(products, eq(products.id, retailerProducts.productId))
+        .orderBy(desc(retailerProducts.updatedAt))
+        .limit(limit)
+        .offset(offset);
+
+      const [{ n }] = await db
+        .select({ n: sql<number>`COUNT(*)::int` })
+        .from(retailerProducts);
+
+      return reply.send({ data: rows, total: n, limit, offset });
+    },
+  );
+
+  /**
+   * PATCH /admin/retailer-mappings/:id
+   * Body: { url?, sku?, isEnabled? } — partial update
+   */
+  app.patch<{ Params: { id: string }; Body: { url?: string; sku?: string | null; isEnabled?: boolean } }>(
+    '/admin/retailer-mappings/:id',
+    async (request, reply) => {
+      const patch = request.body ?? {};
+      const [updated] = await db
+        .update(retailerProducts)
+        .set({
+          url: patch.url ?? undefined,
+          sku: patch.sku === undefined ? undefined : patch.sku,
+          isEnabled: patch.isEnabled ?? undefined,
+          updatedAt: new Date(),
+        })
+        .where(eq(retailerProducts.id, request.params.id))
+        .returning();
+      if (!updated) return reply.status(404).send({ error: 'not_found' });
+      return reply.send({ data: updated });
+    },
+  );
+
+  /** DELETE /admin/retailer-mappings/:id */
+  app.delete<{ Params: { id: string } }>(
+    '/admin/retailer-mappings/:id',
+    async (request, reply) => {
+      const deleted = await db
+        .delete(retailerProducts)
+        .where(eq(retailerProducts.id, request.params.id))
+        .returning();
+      if (deleted.length === 0) return reply.status(404).send({ error: 'not_found' });
+      return reply.send({ data: deleted[0] });
+    },
+  );
+
+  /**
+   * GET /admin/health
+   *
+   * Operational observability snapshot. No auth on purpose — this is safe
+   * to expose (counts only, no PII) and lets you wire a status page or
+   * Uptime Robot check without a token.
+   *
+   * Returns:
+   *   - counts: products, sets, users, portfolio items, alerts, push tokens,
+   *     retailer mappings
+   *   - price feed health: most-recent recorded_at, rows in last 1h / 24h
+   *   - restock worker health: enabled mappings count, last-checked summary,
+   *     adapter error distribution from `last_error`
+   *   - queue depths: wait/active/completed/failed per queue
+   *   - signal distribution: count per investment_signal
+   */
+  app.get('/admin/health', async (_request, reply) => {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const [
+      productCount,
+      usersByTier,
+      portfolioCount,
+      activeAlertCount,
+      pushTokenCount,
+      mappingCount,
+      mappingsEnabled,
+      mappingsInStock,
+      latestPrice,
+      pricesLastHour,
+      pricesLastDay,
+      signalDist,
+      retailerErrors,
+    ] = await Promise.all([
+      db.select({ n: sql<number>`COUNT(*)::int` }).from(products),
+      db
+        .select({ tier: users.subscriptionTier, n: sql<number>`COUNT(*)::int` })
+        .from(users)
+        .groupBy(users.subscriptionTier),
+      db.select({ n: sql<number>`COUNT(*)::int` }).from(portfolioItems),
+      db
+        .select({ n: sql<number>`COUNT(*)::int` })
+        .from(alertSubscriptions)
+        .where(eq(alertSubscriptions.isActive, true)),
+      db
+        .select({ n: sql<number>`COUNT(*)::int` })
+        .from(pushTokens)
+        .where(eq(pushTokens.isEnabled, true)),
+      db.select({ n: sql<number>`COUNT(*)::int` }).from(retailerProducts),
+      db
+        .select({ n: sql<number>`COUNT(*)::int` })
+        .from(retailerProducts)
+        .where(eq(retailerProducts.isEnabled, true)),
+      db
+        .select({ n: sql<number>`COUNT(*)::int` })
+        .from(retailerProducts)
+        .where(
+          and(
+            eq(retailerProducts.isEnabled, true),
+            eq(retailerProducts.lastInStock, true),
+          ),
+        ),
+      db
+        .select({ at: sql<Date>`MAX(recorded_at)` })
+        .from(priceHistory),
+      db
+        .select({ n: sql<number>`COUNT(*)::int` })
+        .from(priceHistory)
+        .where(sql`recorded_at > ${oneHourAgo.toISOString()}`),
+      db
+        .select({ n: sql<number>`COUNT(*)::int` })
+        .from(priceHistory)
+        .where(sql`recorded_at > ${oneDayAgo.toISOString()}`),
+      db
+        .select({ signal: products.investmentSignal, n: sql<number>`COUNT(*)::int` })
+        .from(products)
+        .groupBy(products.investmentSignal),
+      db
+        .select({
+          error: retailerProducts.lastError,
+          retailer: retailerProducts.retailer,
+          n: sql<number>`COUNT(*)::int`,
+        })
+        .from(retailerProducts)
+        .where(sql`last_error IS NOT NULL`)
+        .groupBy(retailerProducts.lastError, retailerProducts.retailer)
+        .orderBy(desc(sql`COUNT(*)`))
+        .limit(10),
+    ]);
+
+    // Queue depths (best-effort — Redis may not be available in dev).
+    const queueStats: Record<string, unknown> = {};
+    async function snapshot(q: typeof priceUpdateQueue, name: string) {
+      if (!q) {
+        queueStats[name] = { status: 'offline' };
+        return;
+      }
+      try {
+        const [waiting, active, completed, failed, delayed] = await Promise.all([
+          q.getWaitingCount(),
+          q.getActiveCount(),
+          q.getCompletedCount(),
+          q.getFailedCount(),
+          q.getDelayedCount(),
+        ]);
+        queueStats[name] = { waiting, active, completed, failed, delayed };
+      } catch (err) {
+        queueStats[name] = { status: 'error', error: (err as Error).message };
+      }
+    }
+    await Promise.all([
+      snapshot(priceUpdateQueue, 'priceUpdates'),
+      snapshot(restockCheckQueue, 'restockChecks'),
+      snapshot(notificationQueue, 'notifications'),
+      snapshot(scoreQueue, 'scores'),
+      snapshot(digestQueue, 'digests'),
+    ]);
+
+    const now = new Date();
+    const priceFeedLatencyMs = latestPrice[0]?.at
+      ? now.getTime() - new Date(latestPrice[0].at).getTime()
+      : null;
+
+    return reply.send({
+      ok: true,
+      serverTime: now.toISOString(),
+      uptime: {
+        priceFeed: {
+          latestRecordedAt: latestPrice[0]?.at ?? null,
+          latencyMs: priceFeedLatencyMs,
+          rowsLastHour: pricesLastHour[0]?.n ?? 0,
+          rowsLastDay: pricesLastDay[0]?.n ?? 0,
+        },
+        redis: redis ? 'connected' : 'offline',
+      },
+      counts: {
+        products: productCount[0]?.n ?? 0,
+        portfolioItems: portfolioCount[0]?.n ?? 0,
+        activeAlerts: activeAlertCount[0]?.n ?? 0,
+        enabledPushTokens: pushTokenCount[0]?.n ?? 0,
+        retailerMappingsTotal: mappingCount[0]?.n ?? 0,
+        retailerMappingsEnabled: mappingsEnabled[0]?.n ?? 0,
+        retailerMappingsInStock: mappingsInStock[0]?.n ?? 0,
+      },
+      usersByTier: usersByTier.reduce<Record<string, number>>((acc, r) => {
+        acc[r.tier] = r.n;
+        return acc;
+      }, {}),
+      signalDistribution: signalDist.reduce<Record<string, number>>((acc, r) => {
+        acc[r.signal ?? 'unscored'] = r.n;
+        return acc;
+      }, {}),
+      topRetailerErrors: retailerErrors.map((r) => ({
+        retailer: r.retailer,
+        error: r.error,
+        count: r.n,
+      })),
+      queues: queueStats,
+    });
   });
 }

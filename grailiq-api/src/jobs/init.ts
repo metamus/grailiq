@@ -11,6 +11,8 @@ import './workers/priceWorker.js';
 import './workers/restockWorker.js';
 import './workers/scoreWorker.js';
 import './workers/notificationWorker.js';
+import './workers/digestWorker.js';
+import './workers/priceTargetWorker.js';
 
 /** Initialize the job system */
 export async function initJobs() {

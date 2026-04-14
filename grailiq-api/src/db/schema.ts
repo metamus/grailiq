@@ -8,6 +8,7 @@ import {
   decimal,
   boolean,
   bigserial,
+  jsonb,
   pgEnum,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
@@ -123,6 +124,8 @@ export const users = pgTable('users', {
   subscriptionTier: subscriptionTierEnum('subscription_tier').notNull().default('free'),
   trialEndsAt: timestamp('trial_ends_at', { withTimezone: true }),
   stripeCustomerId: varchar('stripe_customer_id', { length: 100 }),
+  featureFlags: jsonb('feature_flags').notNull().default({}),
+  notificationPrefs: jsonb('notification_prefs').notNull().default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -223,4 +226,107 @@ export const alertSubscriptionsRelations = relations(alertSubscriptions, ({ one 
 
 export const retailerProductsRelations = relations(retailerProducts, ({ one }) => ({
   product: one(products, { fields: [retailerProducts.productId], references: [products.id] }),
+}));
+
+/**
+ * Score history — rolling daily snapshot of each product's GrailIQ score
+ * and investment signal. Written by the scoreWorker at the end of its
+ * recalc run. Enables real "top movers this week" calculations instead of
+ * a current-only view.
+ *
+ * Indexed on (product_id, recorded_at DESC) for fast "score N days ago"
+ * lookups.
+ */
+export const scoreHistory = pgTable('score_history', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  productId: uuid('product_id')
+    .notNull()
+    .references(() => products.id),
+  score: decimal('score', { precision: 3, scale: 1 }).notNull(),
+  signal: investmentSignalEnum('signal'),
+  recordedAt: timestamp('recorded_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const scoreHistoryRelations = relations(scoreHistory, ({ one }) => ({
+  product: one(products, {
+    fields: [scoreHistory.productId],
+    references: [products.id],
+  }),
+}));
+
+/**
+ * Watchlist — products a user is tracking but doesn't own.
+ *
+ * Different from `portfolio_items`: no cost basis, no quantity. Just a
+ * "save for later" + personal notes. Used by the mobile app's heart-icon
+ * add and the web's "Watch" button on the product page.
+ *
+ * Unique per (user, product) so the UI can toggle in/out cleanly.
+ */
+export const watchlistItems = pgTable('watchlist_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id),
+  productId: uuid('product_id')
+    .notNull()
+    .references(() => products.id),
+  note: text('note'),
+  targetPrice: decimal('target_price', { precision: 10, scale: 2 }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const watchlistItemsRelations = relations(watchlistItems, ({ one }) => ({
+  user: one(users, { fields: [watchlistItems.userId], references: [users.id] }),
+  product: one(products, { fields: [watchlistItems.productId], references: [products.id] }),
+}));
+
+/**
+ * Lightweight first-party analytics. Writes are cheap (indexed only on
+ * event_name + occurred_at and user_id + occurred_at). Read queries can
+ * compute cohort retention, funnel conversion, etc. via plain SQL.
+ *
+ * Not a replacement for PostHog / Mixpanel long-term — but a zero-cost
+ * first step.
+ */
+export const analyticsEvents = pgTable('analytics_events', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  userId: uuid('user_id').references(() => users.id),
+  sessionId: varchar('session_id', { length: 64 }),
+  eventName: varchar('event_name', { length: 80 }).notNull(),
+  properties: jsonb('properties').notNull().default({}),
+  referrer: text('referrer'),
+  path: text('path'),
+  userAgent: text('user_agent'),
+  ipHash: varchar('ip_hash', { length: 64 }),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Expo push notification device tokens.
+ *
+ * One row per physical device per user. `expoPushToken` is the ExponentPush
+ * token string (starts with `ExponentPushToken[...]`). Deduped on
+ * (user_id, expo_push_token) so we never double-send to the same device.
+ *
+ * `lastUsedAt` is bumped every time the mobile client re-registers (app
+ * launch). A janitor job can prune rows that haven't checked in for 60 days.
+ */
+export const pushTokens = pgTable('push_tokens', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id),
+  expoPushToken: varchar('expo_push_token', { length: 255 }).notNull(),
+  platform: varchar('platform', { length: 16 }).notNull(), // 'ios' | 'android' | 'web'
+  deviceId: varchar('device_id', { length: 100 }),
+  isEnabled: boolean('is_enabled').notNull().default(true),
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const pushTokensRelations = relations(pushTokens, ({ one }) => ({
+  user: one(users, { fields: [pushTokens.userId], references: [users.id] }),
 }));

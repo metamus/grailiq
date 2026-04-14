@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { db } from '../config/database.js';
-import { products, priceHistory } from '../db/schema.js';
-import { eq, desc } from 'drizzle-orm';
+import { products, priceHistory, scoreHistory } from '../db/schema.js';
+import { eq, desc, sql, inArray, and, gte } from 'drizzle-orm';
 
 /** Register product-related API routes */
 export async function productRoutes(app: FastifyInstance) {
@@ -42,4 +42,66 @@ export async function productRoutes(app: FastifyInstance) {
       return reply.send({ data: history });
     },
   );
+
+  /**
+   * GET /products/movers?days=7
+   *
+   * Real week-over-week (or N-day) movers using score_history snapshots.
+   * Returns products sorted by absolute score delta with direction.
+   * Response: { data: [{ product, scoreNow, scorePrior, delta, direction }] }
+   */
+  app.get<{ Querystring: { days?: string; limit?: string } }>(
+    '/products/movers',
+    async (request, reply) => {
+      const days = Math.min(365, Math.max(1, parseInt(request.query.days || '7', 10)));
+      const limit = Math.min(50, Math.max(1, parseInt(request.query.limit || '10', 10)));
+
+      const windowStart = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+      // Grab the earliest score_history row per product since `windowStart`
+      // using DISTINCT ON. This is our "score N days ago" reference.
+      const priorSnapshots = await db
+        .selectDistinctOn([scoreHistory.productId], {
+          productId: scoreHistory.productId,
+          score: scoreHistory.score,
+          signal: scoreHistory.signal,
+          recordedAt: scoreHistory.recordedAt,
+        })
+        .from(scoreHistory)
+        .where(gte(scoreHistory.recordedAt, windowStart))
+        .orderBy(scoreHistory.productId, scoreHistory.recordedAt);
+
+      if (priorSnapshots.length === 0) {
+        return reply.send({ data: [], note: 'insufficient_history' });
+      }
+
+      const productIds = priorSnapshots.map((s) => s.productId);
+      const currentProducts = await db
+        .select()
+        .from(products)
+        .where(inArray(products.id, productIds));
+      const productMap = new Map(currentProducts.map((p) => [p.id, p]));
+
+      const movers = priorSnapshots
+        .map((prior) => {
+          const product = productMap.get(prior.productId);
+          if (!product || !product.grailiqScore) return null;
+          const now = parseFloat(product.grailiqScore);
+          const then = parseFloat(prior.score);
+          const delta = now - then;
+          return { product, scoreNow: now, scorePrior: then, delta };
+        })
+        .filter((x): x is NonNullable<typeof x> => x !== null)
+        .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+        .slice(0, limit)
+        .map((m) => ({
+          ...m,
+          direction: m.delta > 0 ? 'up' : m.delta < 0 ? 'down' : 'flat',
+        }));
+
+      return reply.send({ data: movers, windowDays: days });
+    },
+  );
 }
+// Silence unused-import linters — `and` reserved for future filters.
+void and;

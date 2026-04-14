@@ -1,9 +1,21 @@
-import { priceUpdateQueue, restockCheckQueue, scoreQueue } from './queues.js';
+import {
+  priceUpdateQueue,
+  restockCheckQueue,
+  scoreQueue,
+  digestQueue,
+  priceTargetQueue,
+} from './queues.js';
 import { logger } from '../lib/logger.js';
 
 /** Initialize all repeatable job schedules */
 export async function initScheduler() {
-  if (!priceUpdateQueue || !restockCheckQueue || !scoreQueue) {
+  if (
+    !priceUpdateQueue ||
+    !restockCheckQueue ||
+    !scoreQueue ||
+    !digestQueue ||
+    !priceTargetQueue
+  ) {
     logger.warn('Redis not available — job scheduler disabled');
     return;
   }
@@ -28,6 +40,18 @@ export async function initScheduler() {
   // enqueue on-demand recalculations so fresh prices get fresh signals.
   await scoreQueue.add('recalculate-scores-daily', {}, {
     repeat: { pattern: '0 2 * * *' },
+  });
+
+  // Weekly market-intelligence digest for Investor-tier users.
+  // Monday 14:00 UTC (9am ET) — early-week, pre-listing-drop timing.
+  await digestQueue.add('weekly-digest', {}, {
+    repeat: { pattern: '0 14 * * 1' },
+  });
+
+  // Watchlist price-target sweep every 10 minutes. Cheap query
+  // (single product-prices DISTINCT ON + set of watchlist rows).
+  await priceTargetQueue.add('check-price-targets', {}, {
+    repeat: { pattern: '*/10 * * * *' },
   });
 
   logger.info('Job scheduler initialized with repeatable jobs');

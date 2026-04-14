@@ -1,11 +1,18 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import {
+  NavigationContainer,
+  DefaultTheme,
+  type NavigationContainerRef,
+} from '@react-navigation/native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { supabase } from './src/lib/supabase';
 import { useAuthStore } from './src/stores/useAuthStore';
+import { usePushNotifications } from './src/hooks/usePushNotifications';
+import { screen as trackScreen } from './src/lib/analytics';
+import { BiometricGate } from './src/components/BiometricGate';
 import { colors } from './src/theme/colors';
 
 const queryClient = new QueryClient({
@@ -56,15 +63,38 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Inside the NavigationContainer so the hook can read/write the nav ref.
+ * Splitting this out keeps App.tsx legible and lets the push hook depend
+ * on the mounted navigation tree.
+ */
+function NavigationRoot() {
+  const navigationRef =
+    useRef<NavigationContainerRef<Record<string, object | undefined>> | null>(null);
+
+  usePushNotifications(navigationRef);
+
+  const onStateChange = () => {
+    const route = navigationRef.current?.getCurrentRoute();
+    if (route?.name) void trackScreen(route.name);
+  };
+
+  return (
+    <NavigationContainer ref={navigationRef} theme={GrailIQTheme} onStateChange={onStateChange}>
+      <BiometricGate>
+        <AppNavigator />
+      </BiometricGate>
+      <StatusBar style="light" />
+    </NavigationContainer>
+  );
+}
+
 export default function App() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <NavigationContainer theme={GrailIQTheme}>
-            <AppNavigator />
-            <StatusBar style="light" />
-          </NavigationContainer>
+          <NavigationRoot />
         </AuthProvider>
       </QueryClientProvider>
     </SafeAreaProvider>

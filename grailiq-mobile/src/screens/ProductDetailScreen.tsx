@@ -12,6 +12,7 @@ import { colors, spacing, fontSize, borderRadius } from '../theme/colors';
 import { useProduct, usePriceHistory } from '../hooks/useProducts';
 import { useCreateAlert } from '../hooks/useAlerts';
 import { useAddPortfolioItem } from '../hooks/usePortfolio';
+import { useIsWatching, useToggleWatch } from '../hooks/useWatchlist';
 import { SignalBadge } from '../components/SignalBadge';
 import { LoadingScreen } from '../components/LoadingScreen';
 import { Sparkline } from '../components/Sparkline';
@@ -35,6 +36,8 @@ export function ProductDetailScreen() {
   const { data: priceHistory } = usePriceHistory(route.params.id, timeRange);
   const createAlert = useCreateAlert();
   const addToPortfolio = useAddPortfolioItem();
+  const { watching } = useIsWatching(route.params.id);
+  const toggleWatch = useToggleWatch();
 
   React.useLayoutEffect(() => {
     if (product) {
@@ -187,11 +190,23 @@ export function ProductDetailScreen() {
 
       {/* Action Buttons */}
       <View style={styles.actionRow}>
+        <TouchableOpacity
+          style={[
+            styles.watchButton,
+            watching && { backgroundColor: colors.avoid + '22', borderColor: colors.avoid + '55' },
+          ]}
+          onPress={() => toggleWatch.mutate(route.params.id)}
+          disabled={toggleWatch.isPending}
+        >
+          <Text style={[styles.watchButtonText, watching && { color: colors.avoid }]}>
+            {watching ? '❤️  Watching' : '🤍  Watch'}
+          </Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.alertButton} onPress={handleAlertMe}>
-          <Text style={styles.alertButtonText}>🔔  Alert Me</Text>
+          <Text style={styles.alertButtonText}>🔔  Alert</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.portfolioButton} onPress={handleAddToPortfolio}>
-          <Text style={styles.portfolioButtonText}>+  Portfolio</Text>
+          <Text style={styles.portfolioButtonText}>+  Add</Text>
         </TouchableOpacity>
       </View>
 
@@ -367,6 +382,16 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginBottom: spacing.lg,
   },
+  watchButton: {
+    flex: 1,
+    backgroundColor: colors.overlay05,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+  },
+  watchButtonText: { color: colors.text, fontWeight: '700', fontSize: fontSize.sm },
   alertButton: {
     flex: 1,
     backgroundColor: colors.primary,
@@ -374,7 +399,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     alignItems: 'center',
   },
-  alertButtonText: { color: colors.white, fontWeight: '800', fontSize: fontSize.base },
+  alertButtonText: { color: colors.white, fontWeight: '800', fontSize: fontSize.sm },
   portfolioButton: {
     flex: 1,
     backgroundColor: 'rgba(127,119,221,0.12)',

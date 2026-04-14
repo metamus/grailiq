@@ -142,6 +142,19 @@ CREATE TABLE alert_subscriptions (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Expo push notification device tokens (one per physical device per user).
+CREATE TABLE push_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expo_push_token VARCHAR(255) NOT NULL,
+  platform VARCHAR(16) NOT NULL,
+  device_id VARCHAR(100),
+  is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  last_used_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (user_id, expo_push_token)
+);
+
 -- Retailer-specific product mappings (URL + SKU + last-seen state).
 -- Used by the restock worker to do real stock detection and fire
 -- notifications only on out-of-stock -> in-stock transitions.
@@ -205,6 +218,10 @@ CREATE INDEX idx_alert_subscriptions_is_active ON alert_subscriptions(is_active)
 CREATE INDEX idx_retailer_products_product_id ON retailer_products(product_id);
 CREATE INDEX idx_retailer_products_retailer ON retailer_products(retailer);
 CREATE INDEX idx_retailer_products_enabled ON retailer_products(is_enabled) WHERE is_enabled = TRUE;
+
+-- Push tokens indexes
+CREATE INDEX idx_push_tokens_user_id ON push_tokens(user_id);
+CREATE INDEX idx_push_tokens_enabled ON push_tokens(is_enabled) WHERE is_enabled = TRUE;
 
 -- ──────────────────────────────────────────────
 -- Constraints

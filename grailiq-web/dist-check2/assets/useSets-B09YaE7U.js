@@ -1,0 +1,1 @@
+import{u as t,a}from"./api-DLTyhmoT.js";function u(){return t({queryKey:["sets"],queryFn:async()=>{const{data:e}=await a.get("/sets");return e.data}})}function n(e){return t({queryKey:["sets",e],queryFn:async()=>{const{data:s}=await a.get(`/sets/${e}`);return s.data},enabled:!!e})}export{n as a,u};

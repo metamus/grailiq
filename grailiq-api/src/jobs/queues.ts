@@ -7,6 +7,8 @@ let priceUpdateQueue: Queue | null = null;
 let restockCheckQueue: Queue | null = null;
 let notificationQueue: Queue | null = null;
 let scoreQueue: Queue | null = null;
+let digestQueue: Queue | null = null;
+let priceTargetQueue: Queue | null = null;
 
 if (redis) {
   const connection = { host: redis.options.host, port: redis.options.port };
@@ -54,9 +56,37 @@ if (redis) {
     },
   });
 
+  /** Queue for weekly market-intelligence digest emails (Investor tier) */
+  digestQueue = new Queue('digests', {
+    connection,
+    defaultJobOptions: {
+      removeOnComplete: 20,
+      removeOnFail: 50,
+      attempts: 2,
+      backoff: { type: 'exponential', delay: 30000 },
+    },
+  });
+
+  /** Queue for watchlist price-target checks */
+  priceTargetQueue = new Queue('price-targets', {
+    connection,
+    defaultJobOptions: {
+      removeOnComplete: 50,
+      removeOnFail: 100,
+      attempts: 2,
+    },
+  });
+
   logger.info('BullMQ queues initialized');
 } else {
   logger.info('Redis not available — BullMQ queues disabled');
 }
 
-export { priceUpdateQueue, restockCheckQueue, notificationQueue, scoreQueue };
+export {
+  priceUpdateQueue,
+  restockCheckQueue,
+  notificationQueue,
+  scoreQueue,
+  digestQueue,
+  priceTargetQueue,
+};
