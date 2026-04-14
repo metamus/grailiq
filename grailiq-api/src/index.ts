@@ -78,9 +78,6 @@ async function buildApp() {
 
 /** Start the server with graceful shutdown */
 async function start() {
-  // Initialize job system (workers and scheduler)
-  await initJobs();
-
   const app = await buildApp();
 
   // Graceful shutdown
@@ -96,6 +93,9 @@ async function start() {
   process.on('SIGTERM', () => shutdown('SIGTERM'));
 
   try {
+    // Listen FIRST so Railway healthcheck can pass, then init jobs in the
+    // background. If BullMQ / Redis hangs on startup, the HTTP server is
+    // still up and serving requests.
     await app.listen({ port: env.PORT, host: '0.0.0.0' });
     logger.info(`GrailIQ API running at http://localhost:${env.PORT}`);
     logger.info(`API docs at http://localhost:${env.PORT}/docs`);
@@ -103,6 +103,12 @@ async function start() {
     logger.error(err);
     process.exit(1);
   }
+
+  // Fire-and-forget job system init. Workers self-heal on Redis reconnects.
+  // If initJobs hangs or throws, the HTTP server keeps serving.
+  initJobs().catch((err) => {
+    logger.error({ err }, 'initJobs failed (non-fatal, HTTP server still running)');
+  });
 }
 
 start();
