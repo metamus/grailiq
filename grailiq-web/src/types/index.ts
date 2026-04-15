@@ -7,6 +7,7 @@ export interface Set {
   totalCards: number | null;
   isOutOfPrint: boolean;
   imageUrl: string | null;
+  productCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -22,7 +23,7 @@ export interface Product {
   grailiqScore: string | null;
   investmentSignal: 'buy' | 'hold' | 'watch' | 'avoid' | null;
   signalRationale: string | null;
-  thesis: string | null;
+  scoreUpdatedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

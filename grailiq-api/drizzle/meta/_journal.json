@@ -1,0 +1,13 @@
+{
+  "version": "6",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1776229207478,
+      "tag": "0000_perfect_bushwacker",
+      "breakpoints": true
+    }
+  ]
+}

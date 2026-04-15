@@ -144,7 +144,7 @@ export default function Pricing() {
           <Sparkles className="h-3 w-3" />
           Pricing
         </div>
-        <h1 className="text-3xl sm:text-4xl font-bold">Choose your plan</h1>
+        <h1 className="text-3xl sm:text-4xl font-display font-bold">Choose your plan</h1>
         <p className="text-gray-400 mt-3 max-w-md mx-auto">
           Start free. Upgrade when you outgrow it. All paid plans include a 14-day free trial and
           you can cancel anytime from the billing portal.

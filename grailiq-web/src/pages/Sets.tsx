@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useSets } from '@/hooks/useSets';
-import { useProducts } from '@/hooks/useProducts';
 import { Spinner } from '@/components/ui/Spinner';
 import { formatDate } from '@/lib/utils';
 import { Search, Package, Calendar, Layers, Filter, ChevronRight } from 'lucide-react';
@@ -19,19 +18,18 @@ const seriesBadge: Record<string, string> = {
 /** Sets encyclopedia listing page */
 export default function Sets() {
   const { data: sets, isLoading } = useSets();
-  const { data: products } = useProducts();
   const [search, setSearch] = useState('');
   const [seriesFilter, setSeries] = useState<string>('all');
 
-  // Product count per set
+  // Product count per set (now from API via productCount field)
   const productCounts = useMemo(() => {
-    if (!products) return {};
+    if (!sets) return {};
     const counts: Record<string, number> = {};
-    products.forEach((p) => {
-      counts[p.setId] = (counts[p.setId] || 0) + 1;
+    sets.forEach((s) => {
+      counts[s.id] = s.productCount || 0;
     });
     return counts;
-  }, [products]);
+  }, [sets]);
 
   // Unique series for filter
   const allSeries = useMemo(() => {
@@ -68,7 +66,7 @@ export default function Sets() {
     <div>
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-3xl font-display font-bold text-white">
           Set Encyclopedia
         </h1>
         <p className="text-gray-500 mt-1">
@@ -120,7 +118,7 @@ export default function Sets() {
           return (
             <Link
               key={set.id}
-              to={`/sets/${set.id}`}
+              to={`/app/sets/${set.id}`}
               className="group relative overflow-hidden rounded-2xl bg-grailiq-dark border border-white/5 hover:border-grailiq-purple/40 transition-all duration-300 hover:shadow-lg hover:shadow-grailiq-purple/10"
             >
               {/* Gradient Background */}

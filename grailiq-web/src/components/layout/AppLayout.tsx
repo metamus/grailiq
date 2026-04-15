@@ -30,10 +30,10 @@ export function AppLayout() {
       <aside className="hidden md:flex w-64 bg-grailiq-dark border-r border-white/5 flex-col">
         {/* Header */}
         <div className="px-6 py-5 border-b border-white/10">
-          <h1 className="text-xl font-bold text-white">
-            Grail<span className="text-grailiq-purple">IQ</span>
+          <h1 className="font-display text-2xl font-semibold text-white tracking-tight">
+            Grail<span className="text-grailiq-purple-light">IQ</span>
           </h1>
-          <p className="text-xs text-gray-400 mt-0.5">Know what your grails are worth</p>
+          <p className="text-xs text-gray-400 mt-0.5 italic">Know what your <span className="font-display">grails</span> are worth</p>
         </div>
 
         {/* Nav */}

@@ -1,15 +1,25 @@
 import { FastifyInstance } from 'fastify';
 import { db } from '../config/database.js';
 import { sets, products } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { getChaseCards } from '../services/singles.js';
 
 /** Register set-related API routes */
 export async function setRoutes(app: FastifyInstance) {
-  /** List all sets */
+  /** List all sets with product counts */
   app.get('/sets', async (_request, reply) => {
-    const allSets = await db.select().from(sets);
-    return reply.send({ data: allSets });
+    // Use raw SQL to get sets with product counts
+    const setsWithCounts = await db.execute(sql`
+      SELECT
+        s.*,
+        COUNT(p.id)::int AS "productCount"
+      FROM sets s
+      LEFT JOIN products p ON p.set_id = s.id
+      GROUP BY s.id
+      ORDER BY s.release_date DESC NULLS LAST
+    `);
+
+    return reply.send({ data: setsWithCounts.rows });
   });
 
   /** Get a single set by ID with its products */

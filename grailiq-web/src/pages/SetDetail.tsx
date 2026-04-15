@@ -100,7 +100,7 @@ export default function SetDetail() {
             <p className="text-[10px] font-bold uppercase tracking-wider text-grailiq-purple-light mb-1">
               {set.code} · {set.series}
             </p>
-            <h1 className="text-3xl sm:text-4xl font-bold leading-tight">{set.name}</h1>
+            <h1 className="text-3xl sm:text-4xl font-display font-bold leading-tight">{set.name}</h1>
           </div>
           {set.isOutOfPrint ? (
             <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-400/30">

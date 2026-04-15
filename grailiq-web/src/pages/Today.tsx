@@ -141,7 +141,7 @@ export default function Today() {
 
         {/* Hero section */}
         <div className="mb-12">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-serif italic font-bold mb-3 leading-tight">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-bold mb-3 leading-tight">
             {todaysPick?.name}
           </h1>
           <p className="text-lg sm:text-xl text-gray-400 mb-6">

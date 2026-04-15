@@ -92,7 +92,6 @@ export const products = pgTable('products', {
   grailiqScore: decimal('grailiq_score', { precision: 3, scale: 1 }),
   investmentSignal: investmentSignalEnum('investment_signal'),
   signalRationale: text('signal_rationale'),
-  thesis: text('thesis'),
   scoreUpdatedAt: timestamp('score_updated_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

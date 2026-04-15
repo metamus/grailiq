@@ -87,7 +87,7 @@ export default function AdminRetailers() {
             <p className="text-[10px] font-bold uppercase tracking-wider text-grailiq-purple-light mb-1">
               Admin
             </p>
-            <h1 className="text-3xl font-bold">Retailer Mappings</h1>
+            <h1 className="text-3xl font-display font-bold">Retailer Mappings</h1>
             <p className="text-sm text-gray-400 mt-1">
               {data?.total ?? 0} mappings · {Object.entries(byRetailer).map(([r, n]) => `${n} ${r.replace('_', ' ')}`).join(' · ') || 'none yet'}
             </p>

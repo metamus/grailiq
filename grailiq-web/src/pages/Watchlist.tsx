@@ -64,7 +64,7 @@ export default function Watchlist() {
                 Save for Later
               </span>
             </div>
-            <h1 className="text-3xl sm:text-4xl font-bold">Watchlist</h1>
+            <h1 className="text-3xl sm:text-4xl font-display font-bold">Watchlist</h1>
             <p className="text-sm sm:text-base text-gray-400 mt-1">
               {items.length === 0
                 ? 'Track products you might buy — no cost basis required.'

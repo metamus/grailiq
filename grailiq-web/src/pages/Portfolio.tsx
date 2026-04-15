@@ -75,7 +75,7 @@ export default function Portfolio() {
                 Portfolio Tracker
               </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">Your Holdings</h1>
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-white">Your Holdings</h1>
             <p className="text-sm text-gray-400 mt-1">
               Cost basis, market value, and unrealized P&L across your sealed collection
             </p>
@@ -121,7 +121,7 @@ export default function Portfolio() {
               Export CSV
             </button>
             <Link
-              to="/sets"
+              to="/app/sets"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-grailiq-purple hover:bg-grailiq-purple-dark text-sm font-medium text-white transition-all shadow-lg shadow-grailiq-purple/25"
             >
               <Plus className="h-4 w-4" />
@@ -257,7 +257,7 @@ export default function Portfolio() {
                   className="group flex items-center gap-4 px-5 py-4 hover:bg-white/[0.02] transition-colors"
                 >
                   <Link
-                    to={`/products/${item.productId}`}
+                    to={`/app/products/${item.productId}`}
                     className="flex items-center gap-4 flex-1 min-w-0"
                   >
                     {/* Icon */}
@@ -320,7 +320,7 @@ export default function Portfolio() {
               Browse the set encyclopedia and add sealed products to start tracking cost basis and P&L.
             </p>
             <Link
-              to="/sets"
+              to="/app/sets"
               className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-grailiq-purple-light hover:text-white transition-colors"
             >
               Browse Sets <ChevronRight className="h-3.5 w-3.5" />

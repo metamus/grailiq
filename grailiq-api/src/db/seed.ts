@@ -1,5 +1,5 @@
 import { db } from '../config/database.js';
-import { sets, products, priceHistory } from './schema.js';
+import { sets, products, priceHistory, scoreHistory } from './schema.js';
 import { sql } from 'drizzle-orm';
 
 // ──────────────────────────────────────────────
@@ -299,6 +299,13 @@ async function seed() {
     // Step 1: Clear existing data
     log.info('Clearing existing data...');
     try {
+      await db.delete(scoreHistory).where(sql`1=1`);
+      log.success('Cleared score_history');
+    } catch (e) {
+      log.warn('Could not clear score_history (may not exist yet)');
+    }
+
+    try {
       await db.delete(priceHistory).where(sql`1=1`);
       log.success('Cleared price_history');
     } catch (e) {
@@ -430,6 +437,84 @@ async function seed() {
 
     log.info(`Total price history records inserted: ${priceHistoryCount}`);
 
+    // Step 5: Insert scores for products
+    log.info('Inserting score data...');
+    let scoreCount = 0;
+
+    // Assign realistic scores based on set properties
+    // Out-of-print sets get higher scores, newer sets start mid-range
+    const scoreMapping: Record<string, { baseScore: number; signal: 'buy' | 'hold' | 'watch' | 'avoid' }> = {
+      'SV01': { baseScore: 60, signal: 'hold' },
+      'SV02': { baseScore: 62, signal: 'hold' },
+      'SV03': { baseScore: 65, signal: 'hold' },
+      'SV3.5': { baseScore: 78, signal: 'buy' },
+      'SV04': { baseScore: 58, signal: 'watch' },
+      'SV4.5': { baseScore: 72, signal: 'buy' },
+      'SV05': { baseScore: 61, signal: 'hold' },
+      'SV06': { baseScore: 59, signal: 'hold' },
+      'SV6.5': { baseScore: 64, signal: 'hold' },
+      'SV07': { baseScore: 66, signal: 'hold' },
+      'SV08': { baseScore: 75, signal: 'buy' },
+      'SV8.5': { baseScore: 82, signal: 'buy' },
+      'SV09': { baseScore: 70, signal: 'buy' },
+      'SWSH01': { baseScore: 88, signal: 'buy' },
+      'SWSH07': { baseScore: 91, signal: 'buy' },
+      'SWSH09': { baseScore: 85, signal: 'buy' },
+      'SWSH11': { baseScore: 87, signal: 'buy' },
+      'SWSH12.5': { baseScore: 84, signal: 'hold' },
+    };
+
+    for (const product of insertedProducts) {
+      const setCode = product.setCode;
+      const scoreData = scoreMapping[setCode] || { baseScore: 60, signal: 'hold' as const };
+
+      // Add slight variation based on product type
+      let typeBoost = 0;
+      if (product.type === 'booster_box') typeBoost = 2;
+      else if (product.type === 'etb') typeBoost = 1;
+      else if (product.type === 'collection_box') typeBoost = 3;
+
+      const finalScore = Math.min(100, Math.max(0, scoreData.baseScore + typeBoost));
+
+      try {
+        await db.insert(scoreHistory).values({
+          productId: product.id,
+          score: String(finalScore.toFixed(1)),
+          signal: scoreData.signal,
+          recordedAt: new Date(),
+        });
+        scoreCount++;
+      } catch (e) {
+        log.error(`Failed to insert score for product ${product.id}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+
+    // Also update the products table with current scores
+    for (const product of insertedProducts) {
+      const setCode = product.setCode;
+      const scoreData = scoreMapping[setCode] || { baseScore: 60, signal: 'hold' as const };
+      let typeBoost = 0;
+      if (product.type === 'booster_box') typeBoost = 2;
+      else if (product.type === 'etb') typeBoost = 1;
+      else if (product.type === 'collection_box') typeBoost = 3;
+      const finalScore = Math.min(100, Math.max(0, scoreData.baseScore + typeBoost));
+
+      try {
+        await db
+          .update(products)
+          .set({
+            grailiqScore: String(finalScore.toFixed(1)),
+            investmentSignal: scoreData.signal,
+            scoreUpdatedAt: new Date(),
+          })
+          .where(sql`id = ${product.id}`);
+      } catch (e) {
+        log.error(`Failed to update product score ${product.id}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+
+    log.success(`Total score records inserted: ${scoreCount}`);
+
     // Summary
     log.success('\n========================================');
     log.success('DATABASE SEEDING COMPLETE');
@@ -437,6 +522,7 @@ async function seed() {
     log.success(`Sets inserted: ${insertedSets.length}`);
     log.success(`Products inserted: ${productCount}`);
     log.success(`Price history records: ${priceHistoryCount}`);
+    log.success(`Score history records: ${scoreCount}`);
     log.success('========================================\n');
 
     process.exit(0);

@@ -65,7 +65,7 @@ export default function Alerts() {
                 Instant Notifications
               </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">Restock Alerts</h1>
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-white">Restock Alerts</h1>
             <p className="text-sm text-gray-400 mt-1">
               Get notified the second a product lands back in stock — across every major retailer
             </p>
@@ -151,7 +151,7 @@ export default function Alerts() {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <Link
-                      to={`/products/${alert.productId}`}
+                      to={`/app/products/${alert.productId}`}
                       className="text-sm font-bold text-white hover:text-grailiq-purple-light transition-colors truncate block"
                     >
                       {alert.product.name}
@@ -211,7 +211,7 @@ export default function Alerts() {
               Browse products and tap "Alert Me" on any detail page to start monitoring retailer inventory.
             </p>
             <Link
-              to="/sets"
+              to="/app/sets"
               className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-grailiq-purple-light hover:text-white transition-colors"
             >
               Browse Products <ChevronRight className="h-3.5 w-3.5" />

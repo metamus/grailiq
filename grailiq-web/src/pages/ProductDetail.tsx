@@ -186,7 +186,7 @@ export default function ProductDetail() {
               <p className="text-[10px] font-semibold uppercase tracking-wider text-grailiq-purple-light mb-1">
                 {typeLabels[product.type] || product.type}
               </p>
-              <h1 className="text-2xl sm:text-3xl font-bold leading-tight font-serif italic">{product.name}</h1>
+              <h1 className="text-2xl sm:text-3xl font-display font-bold leading-tight">{product.name}</h1>
               {product.msrp && (
                 <p className="text-sm text-gray-400 mt-2 flex items-center gap-1.5">
                   <DollarSign className="h-3.5 w-3.5" />
@@ -310,14 +310,14 @@ export default function ProductDetail() {
         </div>
       </div>
 
-      {/* Investment Thesis */}
-      {product.thesis && (
+      {/* Signal Rationale */}
+      {product.signalRationale && (
         <div className="mb-6 rounded-2xl border border-white/5 bg-white/[0.02] p-5">
           <h2 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-3">
-            Investment Thesis
+            Signal Rationale
           </h2>
           <p className="text-base text-gray-200 leading-relaxed">
-            {product.thesis}
+            {product.signalRationale}
           </p>
         </div>
       )}

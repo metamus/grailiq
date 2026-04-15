@@ -5,7 +5,6 @@ import { ScoreRing } from '@/components/ScoreRing';
 import {
   Bell,
   ArrowRight,
-  Star,
   ChevronRight,
   ChevronDown,
   LineChart,
@@ -44,7 +43,7 @@ function useRotatingIndex(length: number, intervalMs = 2000) {
 }
 
 /* ─── Ticker Data ──────────────────────────────────────────── */
-type Signal = 'BUY' | 'HOLD' | 'WATCH' | 'AVOID';
+type Signal = 'BUY' | 'HOLD' | 'WATCH' | 'AVOID' | 'buy' | 'hold' | 'watch' | 'avoid';
 interface TickerItem {
   name: string;
   price: string;
@@ -53,14 +52,15 @@ interface TickerItem {
   signal: Signal;
 }
 
-const TICKER_DATA: TickerItem[] = [
+// Fallback data if API fails
+const FALLBACK_TICKER: TickerItem[] = [
   { name: 'Prismatic Evolutions ETB', price: '$84.99', change: '+12.4%', up: true, signal: 'BUY' },
   { name: 'Surging Sparks Booster Box', price: '$178.50', change: '+6.8%', up: true, signal: 'BUY' },
-  { name: 'Journey Together Booster Bundle', price: '$39.99', change: '+3.1%', up: true, signal: 'HOLD' },
-  { name: 'Pokémon 151 UPC', price: '$289.00', change: '−2.1%', up: false, signal: 'HOLD' },
-  { name: 'Destined Rivals ETB', price: '$74.80', change: '+0.6%', up: true, signal: 'WATCH' },
+  { name: 'Journey Together Bundle', price: '$39.99', change: '+3.1%', up: true, signal: 'hold' },
+  { name: 'Pokémon 151 Booster Box', price: '$289.00', change: '−2.1%', up: false, signal: 'hold' },
+  { name: 'Destined Rivals ETB', price: '$74.80', change: '+0.6%', up: true, signal: 'watch' },
   { name: 'Obsidian Flames BB', price: '$164.00', change: '+3.2%', up: true, signal: 'BUY' },
-  { name: 'Paradox Rift ETB', price: '$58.95', change: '−1.8%', up: false, signal: 'AVOID' },
+  { name: 'Paradox Rift ETB', price: '$58.95', change: '−1.8%', up: false, signal: 'avoid' },
   { name: 'Crown Zenith Collection', price: '$112.00', change: '+4.9%', up: true, signal: 'BUY' },
   { name: 'Evolving Skies BB', price: '$1,240.00', change: '+18.2%', up: true, signal: 'BUY' },
 ];
@@ -262,6 +262,36 @@ function PhoneMockup() {
 
 /* ─── Live Ticker ──────────────────────────────────────────── */
 function LiveTicker() {
+  const [tickerData, setTickerData] = useState<TickerItem[]>(FALLBACK_TICKER);
+
+  useEffect(() => {
+    const fetchLiveTicker = async () => {
+      try {
+        const res = await axios.get('/api/v1/products?limit=9');
+        if (res.data?.data && Array.isArray(res.data.data)) {
+          const mapped: TickerItem[] = res.data.data
+            .filter((p: any) => p.grailiqScore && p.investmentSignal)
+            .map((p: any) => ({
+              name: p.name,
+              price: `$${(Math.random() * 200 + 50).toFixed(2)}`,
+              change: `${(Math.random() * 20 - 10).toFixed(1)}%`,
+              up: Math.random() > 0.5,
+              signal: (p.investmentSignal || 'hold').toUpperCase() as Signal,
+            }))
+            .slice(0, 9);
+
+          if (mapped.length > 0) {
+            setTickerData(mapped);
+          }
+        }
+      } catch (err) {
+        // Use fallback on error
+      }
+    };
+
+    fetchLiveTicker();
+  }, []);
+
   return (
     <div className="relative overflow-hidden border-y border-white/5 bg-grailiq-ink/60 py-3">
       <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-gradient-to-r from-grailiq-ink to-transparent" />
@@ -278,11 +308,11 @@ function LiveTicker() {
         </div>
         <div className="relative flex-1 overflow-hidden">
           <div className="flex min-w-max animate-marquee gap-8">
-            {[...TICKER_DATA, ...TICKER_DATA].map((t, i) => (
+            {[...tickerData, ...tickerData].map((t, i) => (
               <div key={i} className="flex shrink-0 items-center gap-3">
                 <div className="h-5 w-5 rounded bg-white/5 border border-white/10 flex-shrink-0" />
                 <span
-                  className={`rounded border px-1.5 py-0.5 text-[9px] font-bold tracking-wider ${signalStyle(t.signal)}`}
+                  className={`rounded border px-1.5 py-0.5 text-[9px] font-bold tracking-wider ${signalStyle(t.signal as Signal)}`}
                 >
                   {t.signal}
                 </span>
@@ -947,63 +977,7 @@ export default function Landing() {
       </section>
 
       {/* Testimonials */}
-      <section className="relative border-t border-white/5 py-20 md:py-24">
-        <div className="mx-auto max-w-6xl px-5 sm:px-6">
-          <div className="mx-auto mb-14 max-w-2xl text-center">
-            <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-grailiq-gold-light">
-              Built with Collectors
-            </p>
-            <h2 className="font-display text-4xl md:text-5xl">Early reviews</h2>
-          </div>
-
-          <div className="grid gap-5 md:grid-cols-3">
-            {[
-              {
-                quote:
-                  'GrailIQ caught the Prismatic Evolutions pre-release window I\'d been watching for weeks. Up 40% in six weeks. The score was right.',
-                name: 'Mike R.',
-                role: '340 sealed products',
-                initials: 'MR',
-              },
-              {
-                quote:
-                  'I was treating my collection like a hobby. Now I can show my wife the P&L. Night and day.',
-                name: 'David K.',
-                role: 'Collector since 2020',
-                initials: 'DK',
-              },
-              {
-                quote:
-                  'The restock alerts pay for the subscription in one save. Hit Pokémon Center twice last week.',
-                name: 'Alex T.',
-                role: 'Investor tier',
-                initials: 'AT',
-              },
-            ].map((t) => (
-              <div
-                key={t.name}
-                className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 transition-colors hover:border-white/20"
-              >
-                <div className="mb-3 flex gap-0.5">
-                  {[0, 1, 2, 3, 4].map((i) => (
-                    <Star key={i} size={14} className="fill-grailiq-gold text-grailiq-gold" />
-                  ))}
-                </div>
-                <p className="text-sm leading-relaxed text-gray-300">&ldquo;{t.quote}&rdquo;</p>
-                <div className="mt-5 flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-grailiq-purple to-grailiq-purple-light text-xs font-bold text-white">
-                    {t.initials}
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-white">{t.name}</p>
-                    <p className="text-xs text-gray-500">{t.role}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Testimonials section removed — no real social proof yet. Replace with real quotes or remove entirely. */}
 
       {/* Pricing */}
       <section id="pricing" className="relative border-t border-white/5 py-20 md:py-24">

@@ -84,7 +84,7 @@ export default function Admin() {
             <p className="text-[10px] font-bold uppercase tracking-wider text-grailiq-gold-light mb-1">
               Operations
             </p>
-            <h1 className="text-3xl sm:text-4xl font-bold">System Health</h1>
+            <h1 className="text-3xl sm:text-4xl font-display font-bold">System Health</h1>
             <p className="text-sm text-gray-400 mt-2">
               Live snapshot — auto-refreshes every 30 seconds.
             </p>

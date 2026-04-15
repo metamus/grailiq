@@ -116,7 +116,7 @@ export default function Dashboard() {
                 Intelligence Platform
               </span>
             </div>
-            <h1 className="text-3xl sm:text-4xl font-bold mb-2">Market Dashboard</h1>
+            <h1 className="text-3xl sm:text-4xl font-display font-bold mb-2">Market Dashboard</h1>
             <p className="text-sm sm:text-base text-gray-400 max-w-lg">
               Live scores and signals across{' '}
               <span className="font-semibold text-white">{stats.totalProducts}</span> sealed
@@ -171,6 +171,58 @@ export default function Dashboard() {
           value={stats.avgScore !== null ? stats.avgScore.toFixed(1) : '—'}
           accent="gold"
         />
+      </div>
+
+      {/* Start Here — Get instant value */}
+      <div className="rounded-2xl border border-grailiq-gold/30 bg-gradient-to-br from-grailiq-gold/5 to-transparent p-6 mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Zap className="h-5 w-5 text-grailiq-gold" />
+          <h2 className="font-bold text-white text-lg">Start Here</h2>
+        </div>
+        <p className="text-sm text-gray-400 mb-4">Get instant insights without a portfolio:</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <Link
+            to="/app/sets"
+            className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] p-4 transition-all hover:border-grailiq-gold/40 hover:bg-white/[0.04]"
+          >
+            <div className="flex items-start gap-3">
+              <Package className="h-5 w-5 text-grailiq-gold flex-shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="font-semibold text-white text-sm">Browse Top Sets</p>
+                <p className="text-xs text-gray-500 mt-1">Highest-rated Pokémon TCG sets</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-600 group-hover:text-grailiq-gold transition-colors flex-shrink-0 ml-auto" />
+            </div>
+          </Link>
+
+          <Link
+            to="/app/today"
+            className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] p-4 transition-all hover:border-grailiq-gold/40 hover:bg-white/[0.04]"
+          >
+            <div className="flex items-start gap-3">
+              <Sparkles className="h-5 w-5 text-grailiq-gold flex-shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="font-semibold text-white text-sm">Today's Grail</p>
+                <p className="text-xs text-gray-500 mt-1">Daily top-scored product</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-600 group-hover:text-grailiq-gold transition-colors flex-shrink-0 ml-auto" />
+            </div>
+          </Link>
+
+          <Link
+            to="/app/score"
+            className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] p-4 transition-all hover:border-grailiq-gold/40 hover:bg-white/[0.04]"
+          >
+            <div className="flex items-start gap-3">
+              <BarChart3 className="h-5 w-5 text-grailiq-gold flex-shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="font-semibold text-white text-sm">Score Methodology</p>
+                <p className="text-xs text-gray-500 mt-1">How we rank products</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-600 group-hover:text-grailiq-gold transition-colors flex-shrink-0 ml-auto" />
+            </div>
+          </Link>
+        </div>
       </div>
 
       {/* Real week-over-week movers (if we have snapshot history) */}
