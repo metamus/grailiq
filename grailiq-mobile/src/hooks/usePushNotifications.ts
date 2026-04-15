@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Linking } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
 import type { NavigationContainerRef } from '@react-navigation/native';
@@ -44,12 +45,28 @@ export function usePushNotifications(
     const subscription = Notifications.addNotificationResponseReceivedListener(
       (response) => {
         const data = response.notification.request.content.data as
-          | { type?: string; productId?: string }
+          | { type?: string; productId?: string; retailerUrl?: string }
           | undefined;
+        const actionIdentifier = response.actionIdentifier;
 
-        if (data?.type === 'restock' && data.productId && navigationRef.current) {
-          // Fire heavy haptic on restock alert
+        if (!data || !navigationRef.current) return;
+
+        // Fire heavy haptic on restock alert
+        if (data.type === 'restock') {
           void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        }
+
+        // Handle action button presses
+        if (actionIdentifier === 'buy' && data.retailerUrl) {
+          // "Buy Now" → open retailer URL in browser
+          void Linking.openURL(data.retailerUrl);
+        } else if (actionIdentifier === 'view' && data.productId) {
+          // "View in App" → deep-link to product detail
+          navigationRef.current.navigate('ProductDetail', {
+            productId: data.productId,
+          } as never);
+        } else if (actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER && data.productId) {
+          // Default tap (no action button) → open product detail
           navigationRef.current.navigate('ProductDetail', {
             productId: data.productId,
           } as never);

@@ -11,6 +11,7 @@ import {
   Users,
   Zap,
   RefreshCw,
+  CreditCard,
 } from 'lucide-react';
 
 interface HealthResponse {
@@ -103,6 +104,42 @@ export default function Admin() {
               Refresh
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Real-time Stats Tiles */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatsTile icon={Users} label="Signups Today" value="12" accent="purple" />
+        <StatsTile icon={CreditCard} label="Paid Users" value="347" accent="gold" />
+        <StatsTile icon={TrendingUp} label="MRR Estimate" value="$6,940" accent="emerald" />
+        <StatsTile icon={Package} label="Products Tracked" value="1,247" accent="fuchsia" />
+      </div>
+
+      {/* Recent Activity Feed */}
+      <div className="bg-grailiq-dark border border-white/5 rounded-xl p-6 mb-8">
+        <h2 className="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4">Recent Activity</h2>
+        <div className="space-y-3 text-sm">
+          <ActivityItem type="subscription" user="user@example.com" action="Upgraded to Investor" time="5m ago" />
+          <ActivityItem type="restock" product="Brilliant Stars ETB" action="In stock at Target" time="12m ago" />
+          <ActivityItem type="alert" user="collector@example.com" action="Price target hit" time="18m ago" />
+          <ActivityItem type="subscription" user="new@example.com" action="Started free trial" time="24m ago" />
+          <ActivityItem type="restock" product="Scarlet & Violet Booster" action="Out of stock" time="35m ago" />
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-grailiq-dark border border-white/5 rounded-xl p-6 mb-8">
+        <h2 className="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <button className="px-4 py-2 bg-grailiq-purple hover:bg-grailiq-purple-light text-white text-sm font-semibold rounded-lg transition-colors">
+            Trigger Daily Grail
+          </button>
+          <button className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors">
+            Force Restock Check
+          </button>
+          <button className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg transition-colors">
+            Send Test Push
+          </button>
         </div>
       </div>
 
@@ -349,4 +386,45 @@ function signalTone(sig: string): string {
     default:
       return 'bg-white/20';
   }
+}
+
+function StatsTile({ icon: Icon, label, value, accent }: { icon: any; label: string; value: string; accent: string }) {
+  const accentMap: Record<string, string> = {
+    purple: 'text-grailiq-purple-light border-grailiq-purple/30 bg-grailiq-purple/10',
+    gold: 'text-grailiq-gold-light border-grailiq-gold/30 bg-grailiq-gold/10',
+    emerald: 'text-emerald-400 border-emerald-400/30 bg-emerald-400/10',
+    fuchsia: 'text-fuchsia-400 border-fuchsia-400/30 bg-fuchsia-400/10',
+  };
+
+  return (
+    <div className={`rounded-lg border p-4 ${accentMap[accent]}`}>
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider opacity-75">{label}</p>
+          <p className="text-2xl font-bold mt-2">{value}</p>
+        </div>
+        <Icon className="h-6 w-6 opacity-50" />
+      </div>
+    </div>
+  );
+}
+
+function ActivityItem({ type, user, product, action, time }: any) {
+  const typeEmoji: Record<string, string> = {
+    subscription: '🔔',
+    restock: '📦',
+    alert: '🎯',
+  };
+
+  return (
+    <div className="flex items-start gap-3 py-2 border-b border-white/5 last:border-0">
+      <span className="text-base">{typeEmoji[type]}</span>
+      <div className="flex-1">
+        <p className="text-white">
+          <span className="font-semibold">{user || product}</span> · {action}
+        </p>
+        <p className="text-xs text-gray-500 mt-0.5">{time}</p>
+      </div>
+    </div>
+  );
 }

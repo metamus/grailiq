@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { db } from '../config/database.js';
 import { dailyGrails, products } from '../db/schema.js';
-import { eq, desc, sql } from 'drizzle-orm';
+import { eq, desc, sql, gte } from 'drizzle-orm';
 
 /**
  * Daily Grail routes
@@ -26,19 +26,75 @@ export async function dailyRoutes(app: FastifyInstance) {
         .where(eq(sql`DATE(${dailyGrails.featuredDate})`, sql`CURRENT_DATE`))
         .limit(1);
 
-      if (!todayGrail) {
-        return reply.status(404).send({
-          error: 'No daily grail selected yet',
-          note: 'Daily selection happens at 9am ET daily',
+      if (todayGrail && todayGrail.product) {
+        return reply.send({
+          data: {
+            id: todayGrail.id,
+            product: todayGrail.product,
+            thesis: todayGrail.thesis,
+            featuredDate: todayGrail.featuredDate,
+          },
         });
+      }
+
+      // If no daily grail for today, pick the highest-scoring product
+      // that hasn't been featured in the last 30 days
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const recentlyFeatured = await db
+        .select({ productId: dailyGrails.productId })
+        .from(dailyGrails)
+        .where(gte(dailyGrails.featuredDate, thirtyDaysAgo));
+
+      const featuredIds = recentlyFeatured.map((r) => r.productId);
+
+      // Get all products sorted by score
+      const allProdsQuery = await db
+        .select()
+        .from(products)
+        .orderBy(desc(sql`CAST(${products.grailiqScore} AS FLOAT)`));
+
+      // Find first product not recently featured
+      let topProduct = null;
+      for (const p of allProdsQuery) {
+        if (!featuredIds.includes(p.id)) {
+          topProduct = p;
+          break;
+        }
+      }
+
+      // Fallback to highest-scored product if all recent ones are featured
+      if (!topProduct && allProdsQuery.length > 0) {
+        topProduct = allProdsQuery[0];
+      }
+
+      if (!topProduct) {
+        return reply.status(404).send({
+          error: 'No products available',
+        });
+      }
+
+      // Insert into daily_grails for today
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+
+      try {
+        await db.insert(dailyGrails).values({
+          productId: topProduct.id,
+          thesis: `Auto-selected today's top-scored product (${topProduct.name}).`,
+          featuredDate: today,
+        });
+      } catch (insertErr: any) {
+        // If insert fails due to duplicate (race condition), that's OK
+        if (!insertErr.message?.includes('unique')) {
+          throw insertErr;
+        }
       }
 
       return reply.send({
         data: {
-          id: todayGrail.id,
-          product: todayGrail.product,
-          thesis: todayGrail.thesis,
-          featuredDate: todayGrail.featuredDate,
+          product: topProduct,
+          thesis: `Auto-selected today's top-scored product (${topProduct.name}).`,
+          featuredDate: today.toISOString(),
         },
       });
     } catch (err) {

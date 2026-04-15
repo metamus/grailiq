@@ -1,9 +1,13 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePortfolio, useDeletePortfolioItem } from '@/hooks/usePortfolio';
+import { useTopProducts } from '@/hooks/useProducts';
 import { Spinner } from '@/components/ui/Spinner';
 import { Sparkline } from '@/components/charts/Sparkline';
 import { generateTrend, signalToBias, signalToColor, pnlColor } from '@/lib/sparkData';
 import { formatPrice, formatDate, formatPercentage, getChangeColor } from '@/lib/utils';
+import { ScoreRing } from '@/components/ScoreRing';
+import { AddToPortfolioModal } from '@/components/modals/AddToPortfolioModal';
 import type { PortfolioItem } from '@/types';
 import {
   Download,
@@ -38,6 +42,8 @@ function toNum(v: number | string | null | undefined): number {
 export default function Portfolio() {
   const { data, isLoading } = usePortfolio();
   const deleteItem = useDeletePortfolioItem();
+  const { data: suggestedProducts } = useTopProducts(4);
+  const [showAddModal, setShowAddModal] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -311,21 +317,71 @@ export default function Portfolio() {
             })}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-20 text-center px-6">
+          <div className="flex flex-col items-center justify-center py-12 text-center px-6">
             <div className="h-16 w-16 rounded-2xl bg-grailiq-purple/10 border border-grailiq-purple/20 flex items-center justify-center mb-4">
               <Package className="h-8 w-8 text-grailiq-purple-light" />
             </div>
-            <p className="text-white font-semibold mb-1">No holdings yet</p>
-            <p className="text-sm text-gray-400 max-w-xs">
-              Browse the set encyclopedia and add sealed products to start tracking cost basis and P&L.
+            <p className="text-white font-semibold mb-1">Track your first sealed product</p>
+            <p className="text-sm text-gray-400 max-w-xs mb-6">
+              Start building your portfolio and monitor cost basis and P&L.
             </p>
+
+            {/* Suggested products */}
+            {suggestedProducts && suggestedProducts.length > 0 && (
+              <div className="w-full max-w-2xl mb-6">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+                  Top-Scored Products
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {suggestedProducts.map((product) => (
+                    <button
+                      key={product.id}
+                      onClick={() => setShowAddModal(product.id)}
+                      className="group flex items-center gap-3 p-3 rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/5 hover:border-grailiq-purple/30 transition-all text-left"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-white truncate group-hover:text-grailiq-purple-light">
+                          {product.name}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5 truncate">
+                          {formatPrice(parseFloat(product.msrp || '0'))}
+                        </p>
+                      </div>
+                      {product.grailiqScore && (
+                        <div className="flex-shrink-0">
+                          <ScoreRing
+                            score={product.grailiqScore}
+                            size={32}
+                            bias={
+                              product.investmentSignal === 'buy'
+                                ? 'bullish'
+                                : product.investmentSignal === 'avoid'
+                                ? 'bearish'
+                                : 'neutral'
+                            }
+                          />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <Link
               to="/app/sets"
-              className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-grailiq-purple-light hover:text-white transition-colors"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-grailiq-purple-light hover:text-white transition-colors"
             >
-              Browse Sets <ChevronRight className="h-3.5 w-3.5" />
+              Browse All Sets <ChevronRight className="h-3.5 w-3.5" />
             </Link>
           </div>
+        )}
+        {showAddModal && (
+          <AddToPortfolioModal
+            isOpen={!!showAddModal}
+            product={{ id: showAddModal } as any}
+            onClose={() => setShowAddModal(null)}
+          />
         )}
       </div>
     </div>

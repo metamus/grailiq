@@ -1,17 +1,36 @@
 import { FastifyInstance } from 'fastify';
 import { db } from '../config/database.js';
 import { products, priceHistory, scoreHistory } from '../db/schema.js';
-import { eq, desc, sql, inArray, and, gte } from 'drizzle-orm';
+import { eq, desc, sql, inArray, and, gte, ilike, or } from 'drizzle-orm';
 import { getCommunitySignals } from '../services/community-signals.js';
 import { computeRipHoldSignal } from '../services/ripHoldSignal.js';
 
 /** Register product-related API routes */
 export async function productRoutes(app: FastifyInstance) {
-  /** List all products */
-  app.get('/products', async (_request, reply) => {
-    const allProducts = await db.select().from(products);
-    return reply.send({ data: allProducts });
-  });
+  /** List all products with optional search */
+  app.get<{ Querystring: { q?: string; limit?: string } }>(
+    '/products',
+    async (request, reply) => {
+      const { q, limit } = request.query;
+      const limitNum = limit ? parseInt(limit, 10) : undefined;
+
+      let allProducts: typeof products.$inferSelect[] = [];
+
+      if (q) {
+        const searchTerm = `%${q}%`;
+        allProducts = await db
+          .select()
+          .from(products)
+          .where(ilike(products.name, searchTerm));
+      } else {
+        allProducts = await db.select().from(products);
+      }
+
+      const result = limitNum ? allProducts.slice(0, limitNum) : allProducts;
+
+      return reply.send({ data: result });
+    }
+  );
 
   /** Get a single product by ID */
   app.get<{ Params: { id: string } }>('/products/:id', async (request, reply) => {

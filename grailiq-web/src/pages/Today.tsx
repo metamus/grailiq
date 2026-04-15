@@ -1,4 +1,4 @@
-import { Share2, Link as LinkIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Share2, Link as LinkIcon, ChevronLeft, ChevronRight, Smartphone } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { ScoreRing } from '@/components/ScoreRing';
 import { Sparkline } from '@/components/charts/Sparkline';
@@ -28,23 +28,33 @@ const fallbackPick = {
 
 export default function Today() {
   const [copied, setCopied] = useState(false);
+  const [todaysPick, setTodaysPick] = useState<typeof fallbackPick | null>(null);
 
+  // Update meta tags when data loads
   useEffect(() => {
-    // Set page OG meta tags
-    document.title = 'Today\'s Pick - GrailIQ';
-    const setMeta = (name: string, content: string) => {
-      let meta = document.querySelector(`meta[property="${name}"]`) || document.querySelector(`meta[name="${name}"]`);
+    if (!todaysPick) return;
+
+    document.title = `${todaysPick.name} — Today's Grail`;
+    const setMeta = (property: string, content: string) => {
+      let meta = document.querySelector(`meta[property="${property}"]`) || document.querySelector(`meta[name="${property}"]`);
       if (!meta) {
         meta = document.createElement('meta');
         document.head.appendChild(meta);
       }
-      meta.setAttribute('property' in meta ? 'property' : 'name', name);
+      if (property.startsWith('og:') || property.startsWith('twitter:')) {
+        meta.setAttribute('property', property);
+      } else {
+        meta.setAttribute('name', property);
+      }
       meta.setAttribute('content', content);
     };
-    setMeta('og:title', 'Today\'s Top Pick - GrailIQ');
-    setMeta('og:description', 'Real-time price intelligence for Pokemon TCG sealed products.');
-  }, []);
-  const [todaysPick, setTodaysPick] = useState<typeof fallbackPick | null>(null);
+    setMeta('og:title', `${todaysPick.name} — Today's Grail`);
+    setMeta('og:description', todaysPick.thesis);
+    setMeta('og:type', 'article');
+    setMeta('twitter:title', `${todaysPick.name} — Today's Grail`);
+    setMeta('twitter:description', todaysPick.thesis);
+    setMeta('twitter:card', 'summary_large_image');
+  }, [todaysPick]);
   const [loading, setLoading] = useState(true);
   const trend = generateTrend('today-sparkline', 'up', 30);
 
@@ -96,6 +106,21 @@ export default function Today() {
         text: todaysPick.name,
         url: window.location.href,
       });
+    }
+  };
+
+  const handleSendToPhone = () => {
+    const appUrl = 'https://apps.apple.com/us/app/grailiq/id6740123456';
+    if (navigator.share) {
+      navigator.share({
+        title: 'GrailIQ Mobile App',
+        text: 'Get push alerts for restock notifications',
+        url: appUrl,
+      });
+    } else {
+      navigator.clipboard.writeText(appUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -242,13 +267,20 @@ export default function Today() {
         </div>
 
         {/* Share row */}
-        <div className="flex items-center gap-3 mb-12">
+        <div className="flex flex-wrap items-center gap-3 mb-12">
           <button
             onClick={handleShare}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-grailiq-gold/30 bg-grailiq-gold/10 text-grailiq-gold-light hover:bg-grailiq-gold/15 transition-all text-sm font-semibold"
           >
             <Share2 className="h-4 w-4" />
             Share
+          </button>
+          <button
+            onClick={handleSendToPhone}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-grailiq-purple/30 bg-grailiq-purple/10 text-grailiq-purple-light hover:bg-grailiq-purple/15 transition-all text-sm font-semibold"
+          >
+            <Smartphone className="h-4 w-4" />
+            Send to my phone
           </button>
           <button
             onClick={handleCopyLink}

@@ -309,9 +309,21 @@ export default function Pricing() {
         </p>
       )}
 
-      <p className="text-center text-xs text-gray-500 mt-12">
-        All plans: SSL encryption, Supabase-backed auth, Stripe-secured payments. Cancel anytime.
-      </p>
+      <div className="mt-12 space-y-4 max-w-3xl mx-auto">
+        <p className="text-center text-xs text-gray-500">
+          All plans: SSL encryption, Supabase-backed auth, Stripe-secured payments. Cancel anytime.
+        </p>
+        <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4 text-center">
+          <p className="text-xs text-gray-400">
+            <strong className="text-white">Push notifications:</strong> Available on iOS and Android apps.
+            Web users receive email alerts only.{' '}
+            <a href="/app/sets" className="text-grailiq-purple-light hover:text-grailiq-purple-light/80">
+              Download the app
+            </a>{' '}
+            to get instant push alerts when products restock.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

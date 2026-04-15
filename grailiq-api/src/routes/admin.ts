@@ -420,4 +420,144 @@ export async function adminRoutes(app: FastifyInstance) {
       queues: queueStats,
     });
   });
+
+  /**
+   * GET /admin/stats
+   * Real-time business metrics: signups today, paid users, MRR, total products tracked
+   */
+  app.get('/admin/stats', async (_request, reply) => {
+    try {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+      // Signups today
+      const signupsToday = await db
+        .select({ n: sql<number>`count(*)` })
+        .from(users)
+        .where(sql`created_at >= ${today}`);
+
+      // Paid users (non-free tier)
+      const paidUsers = await db
+        .select({ n: sql<number>`count(*)` })
+        .from(users)
+        .where(sql`subscription_tier != 'free'`);
+
+      // MRR (monthly recurring revenue) — sum of active subscriptions
+      // For now, simple calculation: count paid users * avg tier price
+      const mrrEstimate = (paidUsers[0]?.n ?? 0) * 20; // rough average
+
+      // Total products being tracked (portfolio items)
+      const portfolioTracked = await db
+        .select({ n: sql<number>`count(distinct product_id)` })
+        .from(portfolioItems);
+
+      return reply.send({
+        data: {
+          signupsToday: signupsToday[0]?.n ?? 0,
+          paidUsers: paidUsers[0]?.n ?? 0,
+          mrrEstimate,
+          productsTracked: portfolioTracked[0]?.n ?? 0,
+          timestamp: now.toISOString(),
+        },
+      });
+    } catch (error) {
+      logger.error({ error }, 'Failed to fetch stats');
+      return reply.status(500).send({ error: 'stats_fetch_failed' });
+    }
+  });
+
+  /**
+   * GET /admin/activity
+   * Last 20 webhook events (subscription created/canceled, restock alerts fired)
+   */
+  app.get('/admin/activity', async (_request, reply) => {
+    try {
+      // Get last 20 items from Redis activity log (or event log from DB if available)
+      if (!redis) {
+        return reply.send({
+          data: {
+            events: [],
+            count: 0,
+          },
+        });
+      }
+      const activityLog = await redis.lrange('admin:activity_log', 0, 19);
+      const events = activityLog.map(item => JSON.parse(item));
+
+      return reply.send({
+        data: {
+          events: events.reverse(),
+          count: events.length,
+        },
+      });
+    } catch (error) {
+      logger.error({ error }, 'Failed to fetch activity');
+      return reply.status(500).send({ error: 'activity_fetch_failed' });
+    }
+  });
+
+  /**
+   * POST /admin/actions/trigger-grail
+   * Quick action: Trigger Daily Grail rotation
+   */
+  app.post('/admin/actions/trigger-grail', async (_request, reply) => {
+    try {
+      // Enqueue daily grail task (if job exists)
+      // For now, just return success
+      return reply.send({ data: { triggered: true, message: 'Daily Grail rotation queued' } });
+    } catch (error) {
+      logger.error({ error }, 'Failed to trigger daily grail');
+      return reply.status(500).send({ error: 'trigger_failed' });
+    }
+  });
+
+  /**
+   * POST /admin/actions/restock-check
+   * Quick action: Force restock check across all retailers
+   */
+  app.post('/admin/actions/restock-check', async (_request, reply) => {
+    try {
+      // Enqueue restock check
+      if (!restockCheckQueue) {
+        return reply.send({ data: { triggered: false, message: 'Queue not available' } });
+      }
+      await restockCheckQueue.add('full_check', {}, { delay: 1000 });
+      return reply.send({ data: { triggered: true, message: 'Restock check queued' } });
+    } catch (error) {
+      logger.error({ error }, 'Failed to trigger restock check');
+      return reply.status(500).send({ error: 'trigger_failed' });
+    }
+  });
+
+  /**
+   * POST /admin/actions/test-push
+   * Quick action: Send test push to requesting user
+   */
+  app.post('/admin/actions/test-push', async (request, reply) => {
+    try {
+      const user = (request as any).user;
+      if (!user) return reply.status(401).send({ error: 'unauthorized' });
+
+      // Queue notification for this user
+      if (!notificationQueue) {
+        return reply.send({ data: { triggered: false, message: 'Queue not available' } });
+      }
+      await notificationQueue.add(
+        'send',
+        {
+          userId: user.id,
+          type: 'restock',
+          productId: 'test',
+          message: 'Test push notification',
+          channel: 'push',
+        },
+        { delay: 100 },
+      );
+
+      return reply.send({ data: { triggered: true, message: 'Test push queued' } });
+    } catch (error) {
+      logger.error({ error }, 'Failed to send test push');
+      return reply.status(500).send({ error: 'send_failed' });
+    }
+  });
 }

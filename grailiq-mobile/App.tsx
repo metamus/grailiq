@@ -11,6 +11,7 @@ import { AppNavigator } from './src/navigation/AppNavigator';
 import { supabase } from './src/lib/supabase';
 import { useAuthStore } from './src/stores/useAuthStore';
 import { usePushNotifications } from './src/hooks/usePushNotifications';
+import { registerNotificationCategories } from './src/lib/notificationCategories';
 import { screen as trackScreen } from './src/lib/analytics';
 import { BiometricGate } from './src/components/BiometricGate';
 import { colors } from './src/theme/colors';
@@ -90,6 +91,11 @@ function NavigationRoot() {
 }
 
 export default function App() {
+  // Register notification categories on app launch
+  useEffect(() => {
+    void registerNotificationCategories();
+  }, []);
+
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>

@@ -13,6 +13,23 @@ export function useProducts() {
   });
 }
 
+/** Fetch top products by score */
+export function useTopProducts(limit = 4) {
+  return useQuery<Product[]>({
+    queryKey: ['products', 'top', limit],
+    queryFn: async () => {
+      const { data } = await api.get('/products', {
+        params: { limit },
+      });
+      // Sort by score descending
+      return (data.data ?? []).sort(
+        (a: Product, b: Product) =>
+          parseFloat(b.grailiqScore || '0') - parseFloat(a.grailiqScore || '0'),
+      );
+    },
+  });
+}
+
 /** Fetch a single product by ID */
 export function useProduct(id: string) {
   return useQuery<Product>({

@@ -187,7 +187,10 @@ async function sendRestockPush(
       productId: payload.productId,
       alertId: payload.alertId,
       retailer: payload.retailer,
-      url: payload.url,
+      retailerUrl: payload.url,
+      productName: payload.productName,
+      // Note: imageUrl should be added by the API before sending.
+      // The Notification Service Extension will download it from this URL.
     },
   }));
 

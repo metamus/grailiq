@@ -1,127 +1,153 @@
 # GrailIQ — When You're Back
 
-Everything that genuinely needs you. Starting with the 5 min of deploys.
+Only what genuinely needs you. Everything else is shipped or scaffolded.
 
 ---
 
-## 🚀 Deploy (5 min)
-
-**Web** — ships rip/hold signal, PSA/CGC pop links, 4-tier pricing UI with monthly/annual toggle, deploy script, polish + rotating tagline additions, chase card UI scaffolding:
+## 🚀 Deploy the latest (3 min)
 
 ```bash
+# Web — Account settings, About page, EV calculator shell, Admin v2, SEO + JSON-LD
 cd ~/Documents/Development/GrailIQ/grailiq-web
-bash deploy.sh
-```
+claude "bash deploy.sh"
 
-(That runs `npm run build && npx wrangler pages deploy ...` — new helper script.)
-
-**API** — ships rip/hold service, chase-cards endpoint, singles service stub, new Stripe tier env-var config, deploy script:
-
-```bash
+# API — DELETE /me, admin stats + activity, quick action endpoints
 cd ~/Documents/Development/GrailIQ/grailiq-api
-bash deploy.sh "feat: rip-hold signal, chase cards stub, 4-tier stripe env, deploy script"
+claude "bash deploy.sh 'feat: account delete + admin stats + activity feed'"
 ```
 
-(Commits + pushes; Railway auto-deploys from master.)
+---
 
-**Mobile** — includes haptics, biometric opt-in default, App Store Finance category, referral UI:
+## 📱 Mobile launch (your highest leverage now)
 
+You have the Apple Developer account. iOS code is fully scaffolded. Time to ship the app.
+
+### Step 1: APNs key — 10 min
+1. <https://developer.apple.com/account/resources/authkeys/list> → **+** → select **Apple Push Notifications service (APNs)**
+2. **Configure** → bundle ID `com.grailiq.app` → **Save**
+3. Download the `.p8` file (one-time download — save to `~/.grailiq_apns_key.p8`)
+4. Note the Key ID (e.g. `ABC123D456`) and your Team ID (top right of dev portal)
+
+### Step 2: Wire Expo push credentials — 5 min
 ```bash
 cd ~/Documents/Development/GrailIQ/grailiq-mobile
-npm install  # picks up expo-haptics
-rm -rf ios android node_modules/.cache
+npx expo login
+npx eas credentials
+# → Build credentials → iOS → com.grailiq.app
+# → paste your APNs .p8 contents when prompted
+```
+
+### Step 3: Prebuild + Xcode capabilities — 15 min
+```bash
+cd ~/Documents/Development/GrailIQ/grailiq-mobile
+rm -rf ios node_modules/.cache
 npx expo prebuild --clean
-cd ios && pod install && cd ..
+cp -r ios-notification-service/ ios/
+cp -r ios-widget/ ios/
+open ios/GrailIQ.xcworkspace
+```
+
+In Xcode, for **all three targets** (GrailIQ, NotificationService, GrailIQWidget):
+- **Signing & Capabilities** → set Team to your Developer Team
+- **+ Capability** → add **Push Notifications**
+- **+ Capability** → add **App Groups** → enter `group.com.grailiq.app`
+
+### Step 4: Build + send a test push
+```bash
+cd ~/Documents/Development/GrailIQ/grailiq-mobile
 npx expo run:ios
 ```
+- Open the app on simulator/device → grab the Expo push token from Xcode console
+- <https://expo.dev/notifications> → paste token → send a test with `sound: default`, `image: <any URL>`, `data.retailerUrl: 'https://target.com'`, `data.productId: 'test'`, `mutableContent: true`, `categoryId: 'restock_alert'`
+- You should see: notification with image + "Buy Now" + "View in App" buttons
 
-**Database migrations** (3 new):
+### Step 5: TestFlight
+1. **Product → Archive** in Xcode → **Distribute App → TestFlight Only**
+2. Sign + upload (Apple processes in 5–30 min)
+3. Invite yourself at <https://testflight.apple.com>
 
-```bash
-cd ~/Documents/Development/GrailIQ/grailiq-api
-npx drizzle-kit push
-```
+### Step 6: App Store submission
+Bundle ID `com.grailiq.app` · Version `1.0.0` · Category **Finance** · Min iOS `14.0`  
+Description: "Real-time restock alerts, price tracking, and portfolio management for sealed Pokémon TCG products."  
+Privacy: <https://grailiq.com/privacy> · Support: <https://grailiq.com>  
+Required: iPhone 6.7" screenshots, content rating PEGI 3+, encryption: No.
 
-**One-time data population** (after migrations):
+---
 
+## ⚡ One-time validation (60 sec)
+
+### Stripe smoke test
+- <https://grailiq.com/sign-in> → sign in
+- <https://grailiq.com/app/pricing> → "Start 14-day trial" on Collector
+- Use a real card (live mode) — 14-day trial = no charge — cancel before day 14 in Billing Portal
+
+### Seed retailer mappings (so restock alerts fire)
+- <https://grailiq.com/app/admin/retailers> → Add 5–10 mappings
+- Target = TCIN (8-digit number in `/p/.../A-93954435`)
+- Pokémon Center = URL alone
+
+### Run image scraper (one-time, ~2 min)
 ```bash
 cd ~/Documents/Development/GrailIQ/grailiq-api
 npx tsx src/scripts/scrape-product-images.ts --dry-run --limit=5  # preview
-npx tsx src/scripts/scrape-product-images.ts                       # 216 Target images
-npx tsx src/scripts/generate-thesis.ts                              # product theses
+npx tsx src/scripts/scrape-product-images.ts                       # all 126 products
 ```
 
 ---
 
-## ⚡ One-time validation (60 seconds each)
+## 💳 Optional: 4-tier pricing activation
 
-### 1. Stripe smoke test
-- Sign in at <https://grailiq.com/sign-in> (Google OAuth now works)
-- <https://grailiq.com/app/pricing> → "Start 14-day trial" on Collector
-- Test card `4242 4242 4242 4242`, any future expiry / CVC / ZIP
-- Confirms Stripe webhook + tier upgrade pipeline
-
-### 2. Seed 5–10 retailer mappings
-<https://grailiq.com/app/admin/retailers> → Add mapping. Focus on **Target** (TCIN = 8-digit number in URL path, e.g. `/p/.../A-93954435`) and **Pokémon Center** (URL alone is enough).
+The UI already supports 4 tiers + monthly/annual toggle. To activate:
+1. Stripe Dashboard → create 6 products: Collector $14/$140, Investor $39/$390, Pro (restocks only) $19/$190
+2. Create coupon `REFER3` = 100% off for 1 month (powers the referral program)
+3. Paste the 6 price IDs to me — I'll wire `STRIPE_PRICE_*` env vars on Railway and the new tiers go live
 
 ---
 
-## 💳 When you're ready to move to 4-tier pricing
+## 🤝 External signups (when you want growth)
 
-The UI already supports 4 tiers with monthly/annual toggle. It reads Stripe price IDs from env vars with a fallback chain. To activate, create 6 products in Stripe Dashboard and paste me the price IDs:
+**Affiliate revenue** — paste IDs and I'll wire env vars:
+- Target Partners → `VITE_TARGET_AFFILIATE_ID`
+- TCGPlayer Affiliate → `VITE_TCGPLAYER_AFFILIATE_ID`
+- eBay Partner Network → `VITE_EBAY_PARTNER_ID`
 
-- `Collector Monthly` $14 · `Collector Annual` $140
-- `Investor Monthly` $39 · `Investor Annual` $390
-- `Pro Monthly` $19 (restocks only) · `Pro Annual` $190
-
-Then in Railway, set: `STRIPE_PRICE_COLLECTOR_MONTHLY`, `_ANNUAL`, `_INVESTOR_MONTHLY`, `_ANNUAL`, `_PRO_MONTHLY`, `_ANNUAL`. Tiers with no price configured show "Coming soon" disabled — so you can migrate one tier at a time.
-
-Plus create a coupon `REFER3` = 100% off for 1 month in Stripe to power the referral program.
-
----
-
-## 🤝 External signups (when you have time)
-
-**Affiliate programs** — paste me the IDs and I'll wire the env vars:
-- Target Partners: <https://partners.target.com> → `VITE_TARGET_AFFILIATE_ID`
-- TCGPlayer Affiliate: <https://tcgplayer.pxf.io> → `VITE_TCGPLAYER_AFFILIATE_ID`
-- eBay Partner Network: <https://partnernetwork.ebay.com> → `VITE_EBAY_PARTNER_ID`
-
-**Community**:
-- Claim @grailiq on X, Instagram, TikTok, Reddit, YouTube, Discord, LinkedIn, GitHub (20 min)
-- Launch Discord server (send me the invite, I'll wire it to the footer)
+**Community + brand**:
+- Claim @grailiq on X, IG, TikTok, Reddit, YouTube, Discord, LinkedIn, GitHub
+- Launch Discord (paste invite — I'll wire to the Landing footer)
 - Create r/GrailIQ subreddit
+- USPTO trademark search at <https://tmsearch.uspto.gov>
 
-**Creator partnerships** (outreach, ~2 weeks email):
-- PokeRev, Smpratic, PTCGRadio, TrayTCG, PokeBallerMike — offer 10% code + 20% rev share
+**Creator outreach** (2-week email campaign):
+- PokeRev, Smpratic, PTCGRadio, TrayTCG, PokeBallerMike
+- Offer: 10% discount code + 20% rev share
+- Track in Notion Backlog → F4
 
-**Paid infra when you need it**:
-- Crawlbase ($3/1K requests) or Brightdata ($500/mo) for Pokémon Center residential proxy
-- Apple Developer $99/yr — before App Store submission
-- Google Play Console $25 one-time — before Play Store submission
-
----
-
-## 🟥 Waiting on third parties (no action)
-
-- eBay Developer Program approval
-- TCGPlayer API (confirmed closed — using scraper)
-- CardLadder / TCGPlayer commercial deal for real singles pricing (C1 EV calculator, C3 chase cards currently stubbed)
+**Paid infrastructure** (when ready):
+- Crawlbase $3/1K requests OR Brightdata for Pokémon Center proxy (H3)
+- Google Play Console $25 one-time (Android submission)
 
 ---
 
-## 📊 Totals
+## 🟥 External, no action
 
-| | Count |
+- eBay Developer Program — application pending their approval
+- TCGPlayer API — closed to new registrations (scraper already works)
+- CardLadder commercial deal — needed for real singles pricing (unlocks C1 EV calculator + C3 chase cards)
+
+---
+
+## 📊 Status snapshot
+
+| | |
 |---|---|
-| Backlog items complete or in review | **30 of 50** |
-| DB migrations ready to apply | 3 |
-| New API endpoints | 10+ |
-| New frontend pages/components | 15+ |
-| External signups still required | 8 |
+| Backlog items shipped | **40 of 50** |
+| Production URLs live | grailiq.com + grailiq-production.up.railway.app |
+| Real users supported | Stripe + Auth + DB all green |
+| Mobile app | scaffolded, awaiting prebuild |
+| External pending | 6 (eBay, social, paid infra) |
 
-**Biggest single unlock now**: Stripe smoke test (60 seconds). That validates the entire paid-user path end-to-end — nothing else downstream works without this.
+The biggest single thing left: **mobile app TestFlight submission**. That's the moment GrailIQ stops being a website and starts being a real product collectors will pay $14/mo to keep on their home screen.
 
 ---
 
-*Last updated: April 14, 2026, end of extended autonomous session.*
+*Last updated: April 15, 2026.*

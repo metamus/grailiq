@@ -6,6 +6,7 @@ import { users } from '../db/schema.js';
 import { requireAuth } from '../middleware/auth.js';
 import { resolveFlags } from '../lib/featureFlags.js';
 import { resolvePrefs, DEFAULT_PREFS } from '../lib/notificationPrefs.js';
+import { supabaseAdmin } from '../config/supabase.js';
 
 const updateSchema = z.object({
   displayName: z.string().min(1).max(120).optional(),
@@ -117,5 +118,24 @@ export async function meRoutes(app: FastifyInstance) {
         featureFlags: resolveFlags(updated),
       },
     });
+  });
+
+  /** DELETE /me — delete user account permanently. */
+  app.delete('/me', async (request, reply) => {
+    const user = (request as any).user;
+    if (!user) return reply.status(401).send({ error: 'user_not_found' });
+
+    try {
+      // Delete user portfolio and related data (cascade)
+      await db.delete(users).where(eq(users.id, user.id));
+
+      // Delete from Supabase Auth
+      await supabaseAdmin.auth.admin.deleteUser(user.id);
+
+      return reply.send({ data: { deleted: true } });
+    } catch (err) {
+      console.error('Failed to delete user:', err);
+      return reply.status(500).send({ error: 'delete_failed' });
+    }
   });
 }

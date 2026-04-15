@@ -801,6 +801,44 @@ export default function Landing() {
         </div>
       </div>
 
+      {/* App Store CTA Banner */}
+      <section className="border-b border-white/5 bg-gradient-to-r from-grailiq-purple/10 to-grailiq-gold/5 py-8">
+        <div className="mx-auto max-w-5xl px-6">
+          <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
+            <div className="flex-1 text-center sm:text-left">
+              <p className="text-sm font-semibold text-grailiq-gold-light uppercase tracking-wider mb-2">
+                Get push alerts for restocks
+              </p>
+              <h3 className="text-xl font-bold text-white md:text-2xl">
+                Download the iPhone app
+              </h3>
+              <p className="mt-2 text-sm text-gray-400">
+                Real-time push notifications when sealed products come back in stock — straight to your lock screen.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <a
+                href="https://apps.apple.com/us/app/grailiq/id6740123456"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 rounded-lg bg-black px-6 py-3 text-white font-semibold transition-all hover:opacity-80"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M17.05 13.5c-.91 0-1.82.55-2.25 1.51.93.64 1.54 1.72 1.54 2.93 0 1.21-.61 2.29-1.54 2.93.43.96 1.34 1.51 2.25 1.51 2.18 0 3.95-1.77 3.95-3.95s-1.77-3.93-3.95-3.93zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
+                </svg>
+                App Store
+              </a>
+              <a
+                href="/sign-in"
+                className="flex items-center justify-center gap-1 rounded-lg border border-white/20 bg-white/5 px-6 py-3 text-white font-semibold transition-all hover:bg-white/10"
+              >
+                Continue on web
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Real Stats */}
       <section className="border-b border-white/5 py-10">
         <div className="mx-auto grid max-w-5xl grid-cols-2 gap-8 px-6 md:grid-cols-4">
@@ -1168,6 +1206,7 @@ export default function Landing() {
           </div>
           <div className="flex items-center gap-5 text-gray-500 flex-wrap justify-center">
             <Link to="/sign-in" className="hover:text-white transition-colors">Sign In</Link>
+            <Link to="/about" className="hover:text-white transition-colors">About</Link>
             <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
             <Link to="/changelog" className="hover:text-white transition-colors">Changelog</Link>
             <Link to="/score" className="hover:text-white transition-colors">The Score</Link>

@@ -232,21 +232,23 @@ export default function ProductDetail() {
                 Share
               </button>
               {showShareMenu && (
-                <div className="absolute right-0 mt-2 w-48 rounded-xl border border-white/15 bg-grailiq-dark shadow-lg z-50">
+                <div className="absolute right-0 mt-2 w-56 rounded-xl border border-white/15 bg-grailiq-dark shadow-lg z-50">
                   <button
                     onClick={() => {
-                      const url = window.location.href;
+                      const url = window.location.href + (window.location.href.includes('?') ? '&' : '?') + 'utm_source=share&utm_medium=product';
                       navigator.clipboard.writeText(url);
                       setShowShareMenu(false);
                     }}
                     className="w-full px-4 py-2.5 text-sm text-white hover:bg-white/[0.06] transition-all text-left first:rounded-t-xl"
                   >
-                    Copy Link
+                    Copy Share Link
                   </button>
                   <button
                     onClick={() => {
-                      const text = `Check out ${product?.name} on GrailIQ`;
-                      const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}`;
+                      const score = product?.grailiqScore ? parseInt(product.grailiqScore) : 0;
+                      const signal = product?.investmentSignal || 'hold';
+                      const text = `I'm tracking ${product?.name} on GrailIQ. Current Score: ${score} (${signal}). ${window.location.href}`;
+                      const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
                       window.open(url, '_blank');
                       setShowShareMenu(false);
                     }}
@@ -256,13 +258,13 @@ export default function ProductDetail() {
                   </button>
                   <button
                     onClick={() => {
-                      const url = `https://reddit.com/submit?url=${encodeURIComponent(window.location.href)}&title=${encodeURIComponent(product?.name || 'GrailIQ Product')}`;
+                      const url = `https://reddit.com/r/pkmninvesting/submit?url=${encodeURIComponent(window.location.href)}&title=${encodeURIComponent(product?.name || 'Check out this GrailIQ product')}`;
                       window.open(url, '_blank');
                       setShowShareMenu(false);
                     }}
                     className="w-full px-4 py-2.5 text-sm text-white hover:bg-white/[0.06] transition-all text-left last:rounded-b-xl"
                   >
-                    Share on Reddit
+                    Share on r/pkmninvesting
                   </button>
                 </div>
               )}
@@ -482,6 +484,41 @@ export default function ProductDetail() {
                 )}
               </div>
             )}
+
+            {/* EV Calculator Shell */}
+            <div className="rounded-2xl border border-white/5 bg-grailiq-dark p-5 space-y-4">
+              <div>
+                <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">
+                  Expected Pull Value (EV)
+                </h3>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  EV calculator coming soon — singles price feed in development. Estimated EV based on set rarity averages.
+                </p>
+              </div>
+              <div className="bg-grailiq-ink rounded-lg p-4 space-y-3">
+                <p className="text-2xl font-bold text-white">
+                  ${Math.round((Number(product.msrp) ?? 0) * 1.1)}-${Math.round((Number(product.msrp) ?? 0) * 1.3)}
+                </p>
+                <p className="text-xs text-gray-400">Range based on print run scarcity</p>
+                <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-grailiq-purple to-grailiq-gold" style={{ width: '35%' }} />
+                </div>
+                <div className="text-xs text-gray-500 space-y-1">
+                  <div className="flex justify-between">
+                    <span>Chase Cards</span>
+                    <span>35%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Holos & Rares</span>
+                    <span>40%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Commons & Uncommons</span>
+                    <span>25%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Product info */}

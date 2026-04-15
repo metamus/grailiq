@@ -27,6 +27,8 @@ const Compare = lazy(() => import('@/pages/Compare'));
 const Changelog = lazy(() => import('@/pages/Changelog'));
 const Privacy = lazy(() => import('@/pages/Privacy'));
 const Terms = lazy(() => import('@/pages/Terms'));
+const Account = lazy(() => import('@/pages/Account'));
+const About = lazy(() => import('@/pages/About'));
 
 function PageLoader() {
   return (
@@ -108,6 +110,7 @@ export default function App() {
         <Route path="/sign-in" element={<SignIn />} />
         <Route path="/score" element={<Score />} />
         <Route path="/today" element={<Today />} />
+        <Route path="/about" element={<About />} />
         <Route path="/status" element={<Status />} />
         <Route path="/changelog" element={<Changelog />} />
         <Route path="/privacy" element={<Privacy />} />
@@ -131,6 +134,7 @@ export default function App() {
           <Route path="compare" element={<Compare />} />
           <Route path="alerts" element={<Alerts />} />
           <Route path="pricing" element={<Pricing />} />
+          <Route path="account" element={<Account />} />
           <Route path="admin" element={<Admin />} />
           <Route path="admin/retailers" element={<AdminRetailers />} />
         </Route>

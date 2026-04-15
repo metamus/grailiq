@@ -18,6 +18,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.grailiq.app",
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.com.grailiq.app"
+        ]
+      },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "LSApplicationCategoryType": "public.app-category.finance"
@@ -42,7 +47,9 @@
           "defaultChannel": "restock-alerts"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "./plugins/withNotificationServiceExtension.js",
+      "./plugins/withWidgetExtension.js"
     ],
     "web": {
       "favicon": "./assets/favicon.png"

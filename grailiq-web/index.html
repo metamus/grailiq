@@ -29,7 +29,47 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
 
-    <!-- JSON-LD for the Organization + Product -->
+    <!-- JSON-LD for Organization -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "GrailIQ",
+        "url": "https://grailiq.com",
+        "logo": "https://grailiq.com/logo.svg",
+        "description": "Price intelligence, investment signals, and portfolio analytics for sealed Pokémon TCG products.",
+        "sameAs": [
+          "https://twitter.com/grailiq",
+          "https://instagram.com/grailiq"
+        ],
+        "contact": {
+          "@type": "ContactPoint",
+          "contactType": "Customer Service",
+          "email": "hello@grailiq.com"
+        }
+      }
+    </script>
+
+    <!-- JSON-LD for WebSite -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "GrailIQ",
+        "url": "https://grailiq.com",
+        "description": "Know what your sealed Pokémon is actually worth. Real-time price tracking, Buy/Hold/Watch/Avoid signals, and portfolio analytics for every sealed Pokémon TCG product.",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": "https://grailiq.com/score?q={search_term_string}"
+          },
+          "query-input": "required name=search_term_string"
+        }
+      }
+    </script>
+
+    <!-- JSON-LD for SoftwareApplication -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -37,13 +77,29 @@
         "name": "GrailIQ",
         "applicationCategory": "FinanceApplication",
         "operatingSystem": "Web, iOS, Android",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "USD",
-          "category": "Free tier"
-        },
-        "description": "Price intelligence, investment signals, and portfolio analytics for sealed Pokémon TCG products."
+        "offers": [
+          {
+            "@type": "Offer",
+            "priceCurrency": "USD",
+            "price": "0",
+            "name": "Free Tier"
+          },
+          {
+            "@type": "Offer",
+            "priceCurrency": "USD",
+            "price": "14",
+            "name": "Collector Tier",
+            "pricingPattern": "https://schema.org/BillingPeriod#Monthly"
+          },
+          {
+            "@type": "Offer",
+            "priceCurrency": "USD",
+            "price": "39",
+            "name": "Investor Tier",
+            "pricingPattern": "https://schema.org/BillingPeriod#Monthly"
+          }
+        ],
+        "description": "Price intelligence, investment signals, and portfolio analytics for sealed Pokémon TCG products. The Bloomberg Terminal for collectors."
       }
     </script>
   </head>

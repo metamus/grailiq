@@ -50,6 +50,8 @@ export default function Dashboard() {
   const { data: products } = useProducts();
   const { data: moversResp } = useMovers(7, 5);
   const weekMovers = moversResp?.data ?? [];
+  const { data: allMoversResp } = useMovers(7, 10);
+  const allMovers = allMoversResp?.data ?? [];
 
   const stats = useMemo(() => {
     const totalSets = sets?.length ?? 0;
@@ -92,6 +94,24 @@ export default function Dashboard() {
       )
       .slice(0, 5);
   }, [sets]);
+
+  // Top Gainers — products with highest priceChange7dPct or highest delta
+  const topGainers = useMemo(() => {
+    if (allMovers.length === 0) return [];
+    return [...allMovers]
+      .filter((m) => m.delta > 0)
+      .sort((a, b) => b.delta - a.delta)
+      .slice(0, 5);
+  }, [allMovers]);
+
+  // Top Losers — products with lowest delta
+  const topLosers = useMemo(() => {
+    if (allMovers.length === 0) return [];
+    return [...allMovers]
+      .filter((m) => m.delta < 0)
+      .sort((a, b) => a.delta - b.delta)
+      .slice(0, 5);
+  }, [allMovers]);
 
   // Aggregate sparkline for the hero — use the top product's bias for the trend
   const heroBias = useMemo(
@@ -289,6 +309,113 @@ export default function Dashboard() {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Top Gainers & Top Losers — side by side */}
+      {(topGainers.length > 0 || topLosers.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
+          {/* Top Gainers */}
+          {topGainers.length > 0 && (
+            <div className="rounded-2xl border border-white/5 bg-grailiq-dark overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-emerald-400" />
+                  <h2 className="font-bold text-white">Top Gainers</h2>
+                  <span className="text-xs text-gray-500">7d change</span>
+                </div>
+              </div>
+              <div className="divide-y divide-white/5">
+                {topGainers.map((m) => (
+                  <Link
+                    key={m.product.id}
+                    to={`/app/products/${m.product.id}`}
+                    className="group flex items-center justify-between px-5 py-3 hover:bg-white/[0.02] transition-colors"
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <ProductThumb imageUrl={m.product.imageUrl} type={m.product.type} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-white group-hover:text-grailiq-purple-light transition-colors truncate">
+                          {m.product.name}
+                        </p>
+                        <p className="text-[11px] text-gray-500 mt-0.5">
+                          {formatPrice(m.product.msrp)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                      <div className="text-right">
+                        <div className="inline-flex items-center gap-1 font-bold text-emerald-400 tabular-nums">
+                          <ArrowUpRight className="h-4 w-4" />
+                          +{m.delta.toFixed(1)}
+                        </div>
+                      </div>
+                      {m.product.grailiqScore && (
+                        <div className="hidden sm:block">
+                          <ScoreRing
+                            score={m.product.grailiqScore}
+                            size={24}
+                            bias="bullish"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Top Losers */}
+          {topLosers.length > 0 && (
+            <div className="rounded-2xl border border-white/5 bg-grailiq-dark overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+                <div className="flex items-center gap-2">
+                  <TrendingDown className="h-4 w-4 text-rose-400" />
+                  <h2 className="font-bold text-white">Top Losers</h2>
+                  <span className="text-xs text-gray-500">7d change</span>
+                </div>
+              </div>
+              <div className="divide-y divide-white/5">
+                {topLosers.map((m) => (
+                  <Link
+                    key={m.product.id}
+                    to={`/app/products/${m.product.id}`}
+                    className="group flex items-center justify-between px-5 py-3 hover:bg-white/[0.02] transition-colors"
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <ProductThumb imageUrl={m.product.imageUrl} type={m.product.type} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-white group-hover:text-grailiq-purple-light transition-colors truncate">
+                          {m.product.name}
+                        </p>
+                        <p className="text-[11px] text-gray-500 mt-0.5">
+                          {formatPrice(m.product.msrp)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                      <div className="text-right">
+                        <div className="inline-flex items-center gap-1 font-bold text-rose-400 tabular-nums">
+                          <ArrowDownRight className="h-4 w-4" />
+                          {m.delta.toFixed(1)}
+                        </div>
+                      </div>
+                      {m.product.grailiqScore && (
+                        <div className="hidden sm:block">
+                          <ScoreRing
+                            score={m.product.grailiqScore}
+                            size={24}
+                            bias="bearish"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

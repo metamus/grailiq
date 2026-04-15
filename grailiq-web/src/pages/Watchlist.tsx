@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { useWatchlist, useRemoveWatch } from '@/hooks/useWatchlist';
+import { useWatchlist, useRemoveWatch, useToggleWatch } from '@/hooks/useWatchlist';
+import { useTopProducts } from '@/hooks/useProducts';
 import { Spinner } from '@/components/ui/Spinner';
 import { ScoreRing } from '@/components/ScoreRing';
 import { Sparkline } from '@/components/charts/Sparkline';
@@ -38,6 +39,8 @@ const signalBadge: Record<string, string> = {
 export default function Watchlist() {
   const { data, isLoading } = useWatchlist();
   const removeWatch = useRemoveWatch();
+  const toggleWatch = useToggleWatch();
+  const { data: suggestedProducts } = useTopProducts(4);
 
   if (isLoading) {
     return (
@@ -185,19 +188,56 @@ export default function Watchlist() {
             })}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-20 text-center px-6">
+          <div className="flex flex-col items-center justify-center py-12 text-center px-6">
             <div className="h-16 w-16 rounded-2xl bg-grailiq-purple/10 border border-grailiq-purple/30 flex items-center justify-center mb-4">
               <Eye className="h-7 w-7 text-grailiq-purple-light" />
             </div>
-            <p className="text-white font-bold mb-1">Nothing on your watchlist yet</p>
-            <p className="text-sm text-gray-400 max-w-sm">
-              Tap the heart icon on any product to track it without adding to your portfolio.
+            <p className="text-white font-bold mb-1">Follow a product for restock + price alerts</p>
+            <p className="text-sm text-gray-400 max-w-sm mb-6">
+              Add products to your watchlist to track price changes and be notified when they come back in stock.
             </p>
+
+            {/* Suggested products */}
+            {suggestedProducts && suggestedProducts.length > 0 && (
+              <div className="w-full max-w-2xl mb-6">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+                  Top-Scored Products
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {suggestedProducts.map((product) => (
+                    <div
+                      key={product.id}
+                      className="flex items-center gap-3 p-3 rounded-xl border border-white/10 bg-white/[0.02]"
+                    >
+                      <Link
+                        to={`/app/products/${product.id}`}
+                        className="flex-1 min-w-0 text-left hover:text-grailiq-purple-light transition-colors"
+                      >
+                        <p className="text-sm font-semibold text-white truncate">
+                          {product.name}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5 truncate">
+                          {formatPrice(parseFloat(product.msrp || '0'))}
+                        </p>
+                      </Link>
+                      <button
+                        onClick={() => toggleWatch.mutate(product.id)}
+                        className="p-2 rounded-lg text-gray-600 hover:text-grailiq-purple-light hover:bg-grailiq-purple/10 transition-colors flex-shrink-0"
+                        title="Add to watchlist"
+                      >
+                        <Heart className="h-4 w-4" fill="currentColor" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <Link
               to="/app/sets"
-              className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-grailiq-purple-light hover:text-white transition-colors"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-grailiq-purple-light hover:text-white transition-colors"
             >
-              Browse products <ChevronRight className="h-3.5 w-3.5" />
+              Browse All Products <ChevronRight className="h-3.5 w-3.5" />
             </Link>
           </div>
         )}

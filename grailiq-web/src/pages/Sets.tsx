@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useSets } from '@/hooks/useSets';
 import { Spinner } from '@/components/ui/Spinner';
 import { formatDate } from '@/lib/utils';
-import { Search, Package, Calendar, Layers, Filter, ChevronRight } from 'lucide-react';
+import { Search, Package, Calendar, Layers, ChevronRight, Flame } from 'lucide-react';
 
 const seriesColors: Record<string, string> = {
   'Scarlet & Violet': 'from-violet-600/30 to-fuchsia-600/20',
@@ -20,6 +20,8 @@ export default function Sets() {
   const { data: sets, isLoading } = useSets();
   const [search, setSearch] = useState('');
   const [seriesFilter, setSeries] = useState<string>('all');
+  const [printFilter, setPrintFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'products' | 'name'>('newest');
 
   // Product count per set (now from API via productCount field)
   const productCounts = useMemo(() => {
@@ -34,25 +36,55 @@ export default function Sets() {
   // Unique series for filter
   const allSeries = useMemo(() => {
     if (!sets) return [];
-    return [...new Set(sets.map((s) => s.series))];
+    return [...new Set(sets.map((s) => s.series))].filter(Boolean);
   }, [sets]);
+
+  // Check if set is recent (last 60 days)
+  const isRecent = (releaseDate: string | null | undefined) => {
+    if (!releaseDate) return false;
+    const now = new Date();
+    const release = new Date(releaseDate);
+    const diffMs = now.getTime() - release.getTime();
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+    return diffDays <= 60;
+  };
 
   // Filtered and sorted sets
   const filtered = useMemo(() => {
     if (!sets) return [];
-    return sets
-      .filter((s) => {
-        const matchesSearch =
-          s.name.toLowerCase().includes(search.toLowerCase()) ||
-          s.code.toLowerCase().includes(search.toLowerCase());
-        const matchesSeries = seriesFilter === 'all' || s.series === seriesFilter;
-        return matchesSearch && matchesSeries;
-      })
-      .sort((a, b) => {
-        if (!a.releaseDate || !b.releaseDate) return 0;
-        return new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime();
-      });
-  }, [sets, search, seriesFilter]);
+    let result = sets.filter((s) => {
+      const matchesSearch =
+        s.name.toLowerCase().includes(search.toLowerCase()) ||
+        s.code.toLowerCase().includes(search.toLowerCase());
+      const matchesSeries = seriesFilter === 'all' || s.series === seriesFilter;
+      const matchesPrint =
+        printFilter === 'all' ||
+        (printFilter === 'in-print' && !s.isOutOfPrint) ||
+        (printFilter === 'out-of-print' && s.isOutOfPrint);
+      return matchesSearch && matchesSeries && matchesPrint;
+    });
+
+    // Sort
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case 'oldest':
+          if (!a.releaseDate || !b.releaseDate) return 0;
+          return new Date(a.releaseDate).getTime() - new Date(b.releaseDate).getTime();
+        case 'products':
+          const countA = productCounts[a.id] || 0;
+          const countB = productCounts[b.id] || 0;
+          return countB - countA;
+        case 'name':
+          return a.name.localeCompare(b.name);
+        case 'newest':
+        default:
+          if (!a.releaseDate || !b.releaseDate) return 0;
+          return new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime();
+      }
+    });
+
+    return result;
+  }, [sets, search, seriesFilter, printFilter, sortBy, productCounts]);
 
   if (isLoading) {
     return (
@@ -75,7 +107,7 @@ export default function Sets() {
       </div>
 
       {/* Search + Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-8">
+      <div className="flex flex-col gap-4 mb-6">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
@@ -86,17 +118,46 @@ export default function Sets() {
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-grailiq-purple/30 focus:border-grailiq-purple transition-all"
           />
         </div>
-        <div className="relative">
-          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+
+        {/* Filter chips */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Series filter */}
+          {allSeries.length > 0 && (
+            <div className="relative">
+              <select
+                value={seriesFilter}
+                onChange={(e) => setSeries(e.target.value)}
+                className="pl-3 pr-8 py-2 bg-grailiq-dark border border-white/10 rounded-lg text-xs font-medium text-white appearance-none focus:outline-none focus:ring-2 focus:ring-grailiq-purple/50 cursor-pointer"
+              >
+                <option value="all">Series</option>
+                {allSeries.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Print status filter */}
           <select
-            value={seriesFilter}
-            onChange={(e) => setSeries(e.target.value)}
-            className="pl-10 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-grailiq-purple/30 focus:border-grailiq-purple cursor-pointer"
+            value={printFilter}
+            onChange={(e) => setPrintFilter(e.target.value)}
+            className="pl-3 pr-8 py-2 bg-grailiq-dark border border-white/10 rounded-lg text-xs font-medium text-white appearance-none focus:outline-none focus:ring-2 focus:ring-grailiq-purple/50 cursor-pointer"
           >
-            <option value="all">All Series</option>
-            {allSeries.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
+            <option value="all">All Print Status</option>
+            <option value="in-print">In Print</option>
+            <option value="out-of-print">Out of Print</option>
+          </select>
+
+          {/* Sort dropdown */}
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+            className="pl-3 pr-8 py-2 bg-grailiq-dark border border-white/10 rounded-lg text-xs font-medium text-white appearance-none focus:outline-none focus:ring-2 focus:ring-grailiq-purple/50 cursor-pointer"
+          >
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="products">Most Products</option>
+            <option value="name">Name A-Z</option>
           </select>
         </div>
       </div>
@@ -126,11 +187,19 @@ export default function Sets() {
 
               {/* Content */}
               <div className="relative p-5">
-                {/* Top Row: Series Badge + OOP Tag */}
-                <div className="flex items-center justify-between mb-4">
-                  <span className={`text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full border ${badge}`}>
-                    {set.series}
-                  </span>
+                {/* Top Row: Series Badge + OOP Tag + Fire badge */}
+                <div className="flex items-center justify-between mb-4 gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full border ${badge}`}>
+                      {set.series}
+                    </span>
+                    {isRecent(set.releaseDate) && (
+                      <span className="text-[11px] font-semibold flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/30">
+                        <Flame className="h-3 w-3" />
+                        Hot
+                      </span>
+                    )}
+                  </div>
                   {set.isOutOfPrint && (
                     <span className="text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
                       Out of Print

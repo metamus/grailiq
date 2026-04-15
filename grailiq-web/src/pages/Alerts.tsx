@@ -202,19 +202,19 @@ export default function Alerts() {
             })}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-20 text-center px-6">
+          <div className="flex flex-col items-center justify-center py-12 text-center px-6">
             <div className="h-16 w-16 rounded-2xl bg-amber-500/10 border border-amber-400/20 flex items-center justify-center mb-4">
               <Bell className="h-8 w-8 text-amber-400" />
             </div>
-            <p className="text-white font-bold mb-1">No alerts configured</p>
-            <p className="text-sm text-gray-400 max-w-sm">
-              Browse products and tap "Alert Me" on any detail page to start monitoring retailer inventory.
+            <p className="text-white font-bold mb-1">No alerts yet</p>
+            <p className="text-sm text-gray-400 max-w-sm mb-6">
+              Add products to your watchlist and we'll notify you when they restock or hit your price target.
             </p>
             <Link
-              to="/app/sets"
-              className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-grailiq-purple-light hover:text-white transition-colors"
+              to="/app/watchlist"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-grailiq-purple-light hover:text-white transition-colors"
             >
-              Browse Products <ChevronRight className="h-3.5 w-3.5" />
+              Go to Watchlist <ChevronRight className="h-3.5 w-3.5" />
             </Link>
           </div>
         )}

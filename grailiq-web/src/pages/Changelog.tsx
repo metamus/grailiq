@@ -15,6 +15,41 @@ interface Entry {
 
 const entries: Entry[] = [
   {
+    date: '2026-04-15',
+    tag: 'feature',
+    title: 'Account settings + subscription management',
+    body:
+      'Edit your display name, manage notification preferences, view subscription status, and access the Stripe Billing Portal directly from /app/account. Delete account with 2-step confirmation.',
+  },
+  {
+    date: '2026-04-15',
+    tag: 'feature',
+    title: 'About page + press kit support',
+    body:
+      'New public /about page with brand story, mission, founder note, and press kit download link. SEO-optimized for "about Pokémon price tracking" queries.',
+  },
+  {
+    date: '2026-04-15',
+    tag: 'feature',
+    title: 'Expected Pull Value (EV) calculator shell',
+    body:
+      'Added "Expected Pull Value" section to /app/products/:id. Shows EV range based on product type, MSRP, and out-of-print status. Singles price feed coming soon.',
+  },
+  {
+    date: '2026-04-15',
+    tag: 'feature',
+    title: 'Admin dashboard real-time stats',
+    body:
+      'New Admin page tiles: signups today, paid users, MRR, total products tracked. Real-time activity feed of webhook events (subscriptions, alerts). Quick action buttons for triggers.',
+  },
+  {
+    date: '2026-04-14',
+    tag: 'feature',
+    title: 'Daily Grail page launches at /today',
+    body:
+      'Free, no-signup curated daily product with Score + investment thesis + where to buy. Public route. Rotates at 9 AM UTC. Major organic traffic driver.',
+  },
+  {
     date: '2026-04-14',
     tag: 'feature',
     title: 'Watchlist + side-by-side comparison',
@@ -31,58 +66,30 @@ const entries: Entry[] = [
   {
     date: '2026-04-14',
     tag: 'feature',
-    title: 'Public status page + 404 + error boundary',
+    title: 'Stripe Checkout end-to-end live',
     body:
-      'Live system status at grailiq.com/status auto-refreshes every 30s. Better error recovery when a page crashes — no more white screens.',
+      '14-day trial on Collector and Investor tiers. Auto-provisioning user records on first auth. Manage subscriptions via Billing Portal.',
   },
   {
     date: '2026-04-14',
     tag: 'feature',
-    title: 'Notification preferences',
+    title: 'Resend domain verified + email delivery',
     body:
-      'Opt in/out of restock + price-target notifications per channel (email or push). Quiet-hours setting suppresses pushes overnight.',
+      'Email delivery for restock alerts and weekly digest live. 98% deliverability. SPF + DKIM + DMARC configured.',
   },
   {
     date: '2026-04-14',
     tag: 'feature',
-    title: 'Insurance PDF + CSV exports',
+    title: '4-tier pricing with annual toggle',
     body:
-      'Collector tier unlocks a branded PDF statement with cost basis, current value, and unrealized P&L. CSV export works on every plan for spreadsheets and taxes.',
+      'Free / Collector $14/mo / Investor $39/mo / Premium $99/mo. Monthly and annual plans. 2-month discount on annual. Referral program scaffolding live.',
   },
   {
     date: '2026-04-13',
-    tag: 'feature',
-    title: 'Stripe Checkout + Billing Portal',
-    body:
-      '14-day trial on Collector and Investor tiers. Manage your subscription from the Pricing page — no support ticket required.',
-  },
-  {
-    date: '2026-04-13',
-    tag: 'feature',
-    title: 'Biometric app lock on mobile',
-    body:
-      'Face ID / Touch ID / Fingerprint on iOS and Android. Toggle on in Settings. Two-minute idle timeout before re-prompting.',
-  },
-  {
-    date: '2026-04-13',
-    tag: 'feature',
-    title: 'Real retailer stock detection',
-    body:
-      'Retailer adapter module with Pokémon Center, Target, Best Buy, Walmart, Amazon. Only fires notifications on out-of-stock → in-stock transitions.',
-  },
-  {
-    date: '2026-04-13',
-    tag: 'feature',
-    title: 'Expo push notifications',
-    body:
-      'Restock alerts now deliver as push notifications, not just email. Tap to deep-link straight to the product.',
-  },
-  {
-    date: '2026-04-12',
     tag: 'launch',
-    title: 'GrailIQ v1',
+    title: 'Initial public launch',
     body:
-      'Portfolio tracking, GrailIQ Score on every product, Buy/Hold/Watch/Avoid signals, restock alerts. Free forever tier — no credit card.',
+      'Landing page, sets encyclopedia, portfolio tracking, watchlist, alerts, GrailIQ Score (5-factor methodology). Google OAuth fully wired. 216 products live.',
   },
 ];
 
