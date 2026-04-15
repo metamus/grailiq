@@ -31,30 +31,29 @@ const portalSchema = z.object({
  */
 export async function stripeRoutes(app: FastifyInstance) {
   // ─── Webhook (must come first, no auth, raw body) ────────────────────
-  // Fastify parses JSON by default; we need the raw body for signature
-  // verification. Register a content-type parser that keeps the raw buffer.
-  app.addContentTypeParser(
-    'application/json',
-    { parseAs: 'buffer' },
-    (_req, body, done) => {
-      try {
+  // We need the raw body for Stripe signature verification. Scope the
+  // raw-buffer content-type parser to the webhook route ONLY (via a child
+  // plugin); the rest of the stripe routes keep the default JSON parser
+  // so that `request.body` is parsed normally.
+  await app.register(async (webhookScope) => {
+    webhookScope.addContentTypeParser(
+      'application/json',
+      { parseAs: 'buffer' },
+      (_req, body, done) => {
         done(null, body);
-      } catch (err) {
-        done(err as Error, undefined);
+      },
+    );
+
+    webhookScope.post('/stripe/webhook', async (request, reply) => {
+      if (!stripe) return reply.status(503).send({ error: 'stripe_not_configured' });
+      if (!env.STRIPE_WEBHOOK_SECRET) {
+        return reply.status(503).send({ error: 'webhook_secret_not_configured' });
       }
-    },
-  );
 
-  app.post('/stripe/webhook', async (request, reply) => {
-    if (!stripe) return reply.status(503).send({ error: 'stripe_not_configured' });
-    if (!env.STRIPE_WEBHOOK_SECRET) {
-      return reply.status(503).send({ error: 'webhook_secret_not_configured' });
-    }
+      const sig = request.headers['stripe-signature'] as string | undefined;
+      if (!sig) return reply.status(400).send({ error: 'missing_signature' });
 
-    const sig = request.headers['stripe-signature'] as string | undefined;
-    if (!sig) return reply.status(400).send({ error: 'missing_signature' });
-
-    const rawBody = request.body as Buffer;
+      const rawBody = request.body as Buffer;
 
     let event: Stripe.Event;
     try {
@@ -93,7 +92,8 @@ export async function stripeRoutes(app: FastifyInstance) {
       // Return 200 anyway — Stripe retries on non-2xx. We log and move on.
     }
 
-    return reply.send({ received: true });
+      return reply.send({ received: true });
+    });
   });
 
   // ─── Auth-required routes ────────────────────────────────────────────
