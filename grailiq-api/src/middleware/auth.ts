@@ -22,16 +22,47 @@ export async function requireAuth(request: FastifyRequest, reply: FastifyReply) 
     }
 
     // Look up our local user record
-    const [localUser] = await db
+    let [localUser] = await db
       .select()
       .from(users)
       .where(eq(users.supabaseId, supabaseUser.id))
       .limit(1);
 
+    // Auto-provision the local user row on first authenticated request.
+    // This handles users who signed up via Supabase (email/password or OAuth)
+    // before a trigger was in place, and also covers the case where a user
+    // deletes their local row.
+    if (!localUser) {
+      const [created] = await db
+        .insert(users)
+        .values({
+          supabaseId: supabaseUser.id,
+          email: supabaseUser.email ?? '',
+          displayName:
+            (supabaseUser.user_metadata as any)?.full_name ??
+            (supabaseUser.user_metadata as any)?.name ??
+            null,
+          subscriptionTier: 'free',
+        })
+        .onConflictDoNothing()
+        .returning();
+      if (created) {
+        localUser = created;
+      } else {
+        // Another request may have just created the row — re-select.
+        [localUser] = await db
+          .select()
+          .from(users)
+          .where(eq(users.supabaseId, supabaseUser.id))
+          .limit(1);
+      }
+    }
+
     // Attach to request for downstream use
     (request as any).user = localUser ?? null;
     (request as any).supabaseUser = supabaseUser;
-  } catch {
+  } catch (err) {
+    request.log.warn({ err }, 'auth middleware error');
     return reply.status(401).send({ error: 'Authentication failed' });
   }
 }

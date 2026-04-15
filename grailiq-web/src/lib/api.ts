@@ -20,12 +20,25 @@ api.interceptors.request.use(async (config) => {
 });
 
 // Response interceptor — handle common errors
+//
+// Only redirect to /sign-in if the Supabase session itself is actually missing
+// or expired. If the session is valid but the API returns 401, that's an API
+// bug or a tier/permission issue — don't boot the user out of the app.
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
-      // Redirect to sign-in
-      window.location.href = '/sign-in';
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        // No Supabase session at all — genuine auth failure, send to sign-in.
+        // Preserve the current URL so we can bounce back after sign-in.
+        const current = window.location.pathname + window.location.search;
+        if (!window.location.pathname.startsWith('/sign-in')) {
+          window.location.href = `/sign-in?next=${encodeURIComponent(current)}`;
+        }
+      }
+      // Otherwise: session is valid, API is misbehaving. Let the caller handle
+      // the 401 (show inline error, fall back, etc.) instead of logging out.
     }
     return Promise.reject(error);
   },

@@ -200,7 +200,18 @@ export default function Pricing() {
           const displayPrice = isAnnual ? tier.annualPrice : tier.monthlyPrice;
           const priceId = isAnnual ? tier.priceIdAnnual : tier.priceIdMonthly;
           const loading = startCheckout.isPending && startCheckout.variables === tier.id;
-          const hasPrice = tier.id === 'free' || priceId;
+          // The API resolves price IDs from its own env vars (STRIPE_PRICE_*),
+          // so we don't need a frontend price ID to enable the button — we
+          // only need the API to support the tier + billing cycle. Monthly
+          // collector & investor are always supported because Railway already
+          // has STRIPE_PRICE_COLLECTOR / STRIPE_PRICE_INVESTOR set. Annual
+          // and Pro still require their respective Stripe prices to exist,
+          // and we detect that via the VITE_* env vars (optional).
+          const apiSupportsMonthly = tier.id === 'collector' || tier.id === 'investor';
+          const hasPrice =
+            tier.id === 'free' ||
+            (!isAnnual && apiSupportsMonthly) ||
+            Boolean(priceId);
 
           return (
             <div
@@ -248,8 +259,10 @@ export default function Pricing() {
                 <button
                   disabled={!hasPrice || isCurrent || loading}
                   onClick={() => {
-                    if (priceId && (tier.id === 'collector' || tier.id === 'investor' || tier.id === 'pro')) {
-                      startCheckout.mutate(tier.id as 'collector' | 'investor');
+                    // Only collector & investor are wired on the API today.
+                    // Pro checkout will be enabled once the API schema accepts it.
+                    if (tier.id === 'collector' || tier.id === 'investor') {
+                      startCheckout.mutate(tier.id);
                     }
                   }}
                   className={`w-full py-2.5 px-3 rounded-lg font-semibold text-xs transition-all flex items-center justify-center gap-2 ${

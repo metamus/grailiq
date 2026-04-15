@@ -349,8 +349,12 @@ function BacktestStats() {
     fetchStats();
   }, []);
 
-  const show6mo = stats?.trailing_6mo?.insufficient_data !== true;
-  const show3mo = stats?.trailing_3mo?.insufficient_data !== true;
+  // Require actual numeric data — guard against null/missing fields so the
+  // page doesn't crash when the endpoint is empty, 404s, or returns a stub.
+  const has6mo = stats?.trailing_6mo && typeof stats.trailing_6mo.avg_return_pct === 'number';
+  const has3mo = stats?.trailing_3mo && typeof stats.trailing_3mo.avg_return_pct === 'number';
+  const show6mo = has6mo && stats.trailing_6mo.insufficient_data !== true;
+  const show3mo = has3mo && stats.trailing_3mo.insufficient_data !== true;
 
   if (loading) {
     return (
