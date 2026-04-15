@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSets } from '@/hooks/useSets';
 import { useProducts } from '@/hooks/useProducts';
@@ -22,6 +22,8 @@ import {
   Activity,
   Flame,
   Radio,
+  Users,
+  Copy,
 } from 'lucide-react';
 
 const typeIcons: Record<string, string> = {
@@ -422,6 +424,9 @@ export default function Dashboard() {
             </Link>
           </div>
 
+          {/* Referral Program */}
+          <ReferralCard />
+
           {/* Activity strip */}
           <div className="rounded-2xl border border-white/5 bg-grailiq-dark p-4">
             <div className="flex items-center gap-2 mb-3">
@@ -542,6 +547,66 @@ function HealthRow({
         <span className="text-gray-300">{label}</span>
       </div>
       <span className="text-gray-500 font-mono">{detail}</span>
+    </div>
+  );
+}
+
+function ReferralCard() {
+  const [copied, setCopied] = useState(false);
+
+  // Stub referral code for now
+  const referralCode = 'GRAIL-XXXXX';
+  const referralUrl = `https://grailiq.com/?ref=${referralCode}`;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(referralUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="rounded-2xl border border-grailiq-gold/30 bg-gradient-to-br from-grailiq-gold/5 to-transparent p-4">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="h-9 w-9 rounded-xl bg-grailiq-gold/15 border border-grailiq-gold/30 flex items-center justify-center">
+            <Users className="h-4 w-4 text-grailiq-gold-light" />
+          </div>
+          <div>
+            <h3 className="font-bold text-white text-sm">Refer Friends</h3>
+            <p className="text-[10px] text-gray-400">Earn 1 month free</p>
+          </div>
+        </div>
+      </div>
+      <p className="text-[11px] text-gray-300 mb-3">
+        Refer 3 collectors, get 1 month of Collector free.
+      </p>
+      <div className="space-y-2">
+        <button
+          onClick={handleCopy}
+          className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-grailiq-gold/10 border border-grailiq-gold/30 text-grailiq-gold-light hover:bg-grailiq-gold/20 transition-all text-xs font-semibold"
+        >
+          <Copy className="h-3 w-3" />
+          {copied ? 'Copied!' : 'Copy Link'}
+        </button>
+        <div className="flex gap-2">
+          <a
+            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('Just joined GrailIQ to track my Pokemon TCG investment. Use my code to earn free month.')}%20${encodeURIComponent(referralUrl)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 px-2 py-1 rounded text-[9px] font-semibold bg-white/5 hover:bg-white/10 transition-all text-gray-300"
+          >
+            Twitter
+          </a>
+          <a
+            href={`https://reddit.com/submit?url=${encodeURIComponent(referralUrl)}&title=Refer%20a%20friend%20to%20GrailIQ`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 px-2 py-1 rounded text-[9px] font-semibold bg-white/5 hover:bg-white/10 transition-all text-gray-300"
+          >
+            Reddit
+          </a>
+        </div>
+      </div>
     </div>
   );
 }

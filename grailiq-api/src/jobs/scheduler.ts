@@ -4,6 +4,7 @@ import {
   scoreQueue,
   digestQueue,
   priceTargetQueue,
+  dailyGrailSelectionQueue,
 } from './queues.js';
 import { logger } from '../lib/logger.js';
 
@@ -14,7 +15,8 @@ export async function initScheduler() {
     !restockCheckQueue ||
     !scoreQueue ||
     !digestQueue ||
-    !priceTargetQueue
+    !priceTargetQueue ||
+    !dailyGrailSelectionQueue
   ) {
     logger.warn('Redis not available — job scheduler disabled');
     return;
@@ -52,6 +54,11 @@ export async function initScheduler() {
   // (single product-prices DISTINCT ON + set of watchlist rows).
   await priceTargetQueue.add('check-price-targets', {}, {
     repeat: { pattern: '*/10 * * * *' },
+  });
+
+  // Daily grail selection: every day at 9am ET (14:00 UTC)
+  await dailyGrailSelectionQueue.add('select-daily-grail', {}, {
+    repeat: { pattern: '0 14 * * *' },
   });
 
   logger.info('Job scheduler initialized with repeatable jobs');

@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { db } from '../config/database.js';
 import { sets, products } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
+import { getChaseCards } from '../services/singles.js';
 
 /** Register set-related API routes */
 export async function setRoutes(app: FastifyInstance) {
@@ -26,5 +27,12 @@ export async function setRoutes(app: FastifyInstance) {
       .where(eq(products.setId, id));
 
     return reply.send({ data: { ...set, products: setProducts } });
+  });
+
+  /** Get chase cards (high-value singles) for a set */
+  app.get<{ Params: { id: string } }>('/sets/:id/chase-cards', async (request, reply) => {
+    const { id } = request.params;
+    const chaseCards = await getChaseCards(id);
+    return reply.send({ data: chaseCards });
   });
 }

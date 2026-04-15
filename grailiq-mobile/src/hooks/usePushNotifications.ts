@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
+import * as Haptics from 'expo-haptics';
 import type { NavigationContainerRef } from '@react-navigation/native';
 import {
   registerForPushNotifications,
@@ -47,6 +48,8 @@ export function usePushNotifications(
           | undefined;
 
         if (data?.type === 'restock' && data.productId && navigationRef.current) {
+          // Fire heavy haptic on restock alert
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
           navigationRef.current.navigate('ProductDetail', {
             productId: data.productId,
           } as never);
@@ -55,4 +58,21 @@ export function usePushNotifications(
     );
     return () => subscription.remove();
   }, [navigationRef]);
+
+  // Handle foreground notifications (app in foreground).
+  useEffect(() => {
+    const subscription = Notifications.addNotificationReceivedListener(
+      (notification) => {
+        const data = notification.request.content.data as
+          | { type?: string; productId?: string }
+          | undefined;
+
+        // Fire medium haptic when restock alert arrives in foreground
+        if (data?.type === 'restock') {
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        }
+      },
+    );
+    return () => subscription.remove();
+  }, []);
 }

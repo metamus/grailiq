@@ -1,13 +1,15 @@
 import { Share2, Link as LinkIcon, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ScoreRing } from '@/components/ScoreRing';
 import { Sparkline } from '@/components/charts/Sparkline';
 import { formatPrice, formatDate } from '@/lib/utils';
 import { generateTrend } from '@/lib/sparkData';
 import { affiliate } from '@/lib/affiliate';
+import { Spinner } from '@/components/ui/Spinner';
+import axios from 'axios';
 
-// TODO: Fetch this from API daily curation endpoint
-const todaysPick = {
+// Fallback data for when API unavailable
+const fallbackPick = {
   name: 'Prismatic Evolutions Elite Trainer Box',
   setName: 'Scarlet & Violet — Prismatic Evolutions',
   type: 'Elite Trainer Box',
@@ -26,7 +28,60 @@ const todaysPick = {
 
 export default function Today() {
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    // Set page OG meta tags
+    document.title = 'Today\'s Pick - GrailIQ';
+    const setMeta = (name: string, content: string) => {
+      let meta = document.querySelector(`meta[property="${name}"]`) || document.querySelector(`meta[name="${name}"]`);
+      if (!meta) {
+        meta = document.createElement('meta');
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute('property' in meta ? 'property' : 'name', name);
+      meta.setAttribute('content', content);
+    };
+    setMeta('og:title', 'Today\'s Top Pick - GrailIQ');
+    setMeta('og:description', 'Real-time price intelligence for Pokemon TCG sealed products.');
+  }, []);
+  const [todaysPick, setTodaysPick] = useState<typeof fallbackPick | null>(null);
+  const [loading, setLoading] = useState(true);
   const trend = generateTrend('today-sparkline', 'up', 30);
+
+  useEffect(() => {
+    const fetchTodaysGrail = async () => {
+      try {
+        const response = await axios.get('/api/v1/daily');
+        if (response.data?.data?.product) {
+          const p = response.data.data.product;
+          setTodaysPick({
+            name: p.name,
+            setName: p.set?.name || 'Unknown Set',
+            type: p.type.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+            price: parseFloat(p.msrp || '0'),
+            delta24h: 0,
+            score: parseInt(p.grailiqScore || '0'),
+            bias: 'bullish' as const,
+            thesis: response.data.data.thesis || 'Auto-selected today\'s top-scored collectible.',
+            retailers: [
+              { name: 'Target', status: 'in_stock' as const, url: 'https://target.com' },
+              { name: 'Pokémon Center', status: 'out_of_stock' as const, url: 'https://pokemoncenter.com' },
+              { name: 'TCGPlayer', status: 'in_stock' as const, url: 'https://tcgplayer.com' },
+            ],
+          });
+        } else {
+          setTodaysPick(fallbackPick);
+        }
+      } catch (err) {
+        console.error('Failed to fetch daily grail:', err);
+        setTodaysPick(fallbackPick);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTodaysGrail();
+  }, []);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -35,7 +90,7 @@ export default function Today() {
   };
 
   const handleShare = () => {
-    if (navigator.share) {
+    if (navigator.share && todaysPick) {
       navigator.share({
         title: "Today's Grail — GrailIQ",
         text: todaysPick.name,
@@ -43,6 +98,22 @@ export default function Today() {
       });
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-grailiq-dark text-white flex items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  if (!todaysPick) {
+    return (
+      <div className="min-h-screen bg-grailiq-dark text-white flex items-center justify-center">
+        <p className="text-gray-400">Unable to load today's grail</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-grailiq-dark text-white overflow-hidden">
@@ -71,10 +142,10 @@ export default function Today() {
         {/* Hero section */}
         <div className="mb-12">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-serif italic font-bold mb-3 leading-tight">
-            {todaysPick.name}
+            {todaysPick?.name}
           </h1>
           <p className="text-lg sm:text-xl text-gray-400 mb-6">
-            {todaysPick.setName} • {todaysPick.type}
+            {todaysPick?.setName} • {todaysPick?.type}
           </p>
 
           {/* Stats row */}
@@ -85,7 +156,7 @@ export default function Today() {
                 Current Price
               </span>
               <p className="text-2xl sm:text-3xl font-bold tabular-nums">
-                {formatPrice(todaysPick.price)}
+                {formatPrice(todaysPick?.price ?? 0)}
               </p>
             </div>
 
@@ -96,7 +167,7 @@ export default function Today() {
               </span>
               <div className="flex items-center gap-2">
                 <span className="text-2xl sm:text-3xl font-bold tabular-nums text-grailiq-gold-light">
-                  +{todaysPick.delta24h.toFixed(1)}%
+                  +{todaysPick?.delta24h?.toFixed(1)}%
                 </span>
               </div>
             </div>
@@ -108,9 +179,9 @@ export default function Today() {
               </span>
               <div className="flex items-center justify-start">
                 <ScoreRing
-                  score={todaysPick.score}
+                  score={todaysPick?.score ?? 0}
                   size={80}
-                  bias={todaysPick.bias}
+                  bias={todaysPick?.bias ?? 'neutral'}
                 />
               </div>
             </div>
@@ -120,7 +191,7 @@ export default function Today() {
         {/* Thesis paragraph */}
         <div className="mb-12 max-w-2xl">
           <p className="text-base sm:text-lg text-gray-300 leading-relaxed">
-            {todaysPick.thesis}
+            {todaysPick?.thesis}
           </p>
         </div>
 
@@ -130,7 +201,7 @@ export default function Today() {
             Where to Buy
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {todaysPick.retailers.map((retailer) => (
+            {todaysPick?.retailers?.map((retailer) => (
               <a
                 key={retailer.name}
                 href={affiliate(retailer.name, retailer.url)}

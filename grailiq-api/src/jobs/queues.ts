@@ -9,6 +9,7 @@ let notificationQueue: Queue | null = null;
 let scoreQueue: Queue | null = null;
 let digestQueue: Queue | null = null;
 let priceTargetQueue: Queue | null = null;
+let dailyGrailSelectionQueue: Queue | null = null;
 
 if (redis) {
   const connection = { host: redis.options.host, port: redis.options.port };
@@ -77,6 +78,16 @@ if (redis) {
     },
   });
 
+  /** Queue for daily grail selection */
+  dailyGrailSelectionQueue = new Queue('daily-grail-selection', {
+    connection,
+    defaultJobOptions: {
+      removeOnComplete: 7,
+      removeOnFail: 30,
+      attempts: 2,
+    },
+  });
+
   logger.info('BullMQ queues initialized');
 } else {
   logger.info('Redis not available — BullMQ queues disabled');
@@ -89,4 +100,5 @@ export {
   scoreQueue,
   digestQueue,
   priceTargetQueue,
+  dailyGrailSelectionQueue,
 };

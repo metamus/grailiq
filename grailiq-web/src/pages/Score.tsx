@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -111,6 +112,22 @@ const myths = [
 ];
 
 export default function Score() {
+  useEffect(() => {
+    // Set page OG meta tags
+    document.title = 'The GrailIQ Score - How We Value Pokemon TCG';
+    const setMeta = (name: string, content: string) => {
+      let meta = document.querySelector(`meta[property="${name}"]`) || document.querySelector(`meta[name="${name}"]`);
+      if (!meta) {
+        meta = document.createElement('meta');
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute('property' in meta ? 'property' : 'name', name);
+      meta.setAttribute('content', content);
+    };
+    setMeta('og:title', 'The GrailIQ Score - Pokemon TCG Valuation');
+    setMeta('og:description', 'Understand how we calculate investment signals and valuations for sealed Pokemon TCG products.');
+  }, []);
+
   return (
     <div className="min-h-screen bg-grailiq-ink text-white">
       {/* Nav */}

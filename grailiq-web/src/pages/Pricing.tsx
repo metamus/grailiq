@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Check, Sparkles, Shield, Zap, CreditCard, Loader2 } from 'lucide-react';
 import {
   useSubscription,
@@ -6,25 +7,25 @@ import {
 } from '@/hooks/useStripe';
 
 interface Tier {
-  id: 'free' | 'collector' | 'investor';
+  id: 'free' | 'collector' | 'investor' | 'pro';
   name: string;
-  price: string;
-  period: string;
+  monthlyPrice?: string;
   annualPrice?: string;
   description: string;
   icon: typeof Shield;
-  accent: 'slate' | 'purple' | 'gold';
+  accent: 'slate' | 'purple' | 'gold' | 'emerald';
   features: string[];
   ctaLabel: string;
   popular?: boolean;
+  priceIdMonthly?: string;
+  priceIdAnnual?: string;
 }
 
 const tiers: Tier[] = [
   {
     id: 'free',
     name: 'Free',
-    price: '$0',
-    period: 'forever',
+    monthlyPrice: '$0',
     description: 'Get started tracking your collection',
     icon: Shield,
     accent: 'slate',
@@ -34,14 +35,13 @@ const tiers: Tier[] = [
       '3 restock alerts',
       'Basic set encyclopedia',
     ],
-    ctaLabel: 'Current plan',
+    ctaLabel: 'Get started',
   },
   {
     id: 'collector',
     name: 'Collector',
-    price: '$9.99',
-    period: '/month',
-    annualPrice: '$95/year — save 21%',
+    monthlyPrice: '$9.99',
+    annualPrice: '$99',
     description: 'Full intelligence for serious collectors',
     icon: Sparkles,
     accent: 'purple',
@@ -53,15 +53,16 @@ const tiers: Tier[] = [
       'Insurance PDF + CSV export',
       'Hot-tier 5-minute refresh',
     ],
-    ctaLabel: 'Start 14-day trial',
+    ctaLabel: 'Start trial',
     popular: true,
+    priceIdMonthly: import.meta.env.VITE_STRIPE_PRICE_COLLECTOR_MONTHLY,
+    priceIdAnnual: import.meta.env.VITE_STRIPE_PRICE_COLLECTOR_ANNUAL,
   },
   {
     id: 'investor',
     name: 'Investor',
-    price: '$24.99',
-    period: '/month',
-    annualPrice: '$239/year — save 20%',
+    monthlyPrice: '$24.99',
+    annualPrice: '$249',
     description: 'Maximum edge for portfolio managers',
     icon: Zap,
     accent: 'gold',
@@ -73,7 +74,29 @@ const tiers: Tier[] = [
       'Priority support',
       'Early access to new features',
     ],
-    ctaLabel: 'Start 14-day trial',
+    ctaLabel: 'Start trial',
+    priceIdMonthly: import.meta.env.VITE_STRIPE_PRICE_INVESTOR_MONTHLY,
+    priceIdAnnual: import.meta.env.VITE_STRIPE_PRICE_INVESTOR_ANNUAL,
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    monthlyPrice: '$19',
+    annualPrice: '$190',
+    description: 'Restock alerts with premium features',
+    icon: Zap,
+    accent: 'emerald',
+    features: [
+      'Unlimited restock alerts (push + email)',
+      '24/7 SMS notifications',
+      'Custom alert rules',
+      'Bot-resistant monitoring',
+      'Webhook integrations',
+      'Dedicated support',
+    ],
+    ctaLabel: 'Start trial',
+    priceIdMonthly: import.meta.env.VITE_STRIPE_PRICE_PRO_MONTHLY,
+    priceIdAnnual: import.meta.env.VITE_STRIPE_PRICE_PRO_ANNUAL,
   },
 ];
 
@@ -96,10 +119,17 @@ const accentClasses = {
     border: 'border-grailiq-gold/40',
     highlight: 'bg-gradient-to-br from-grailiq-gold/10 to-transparent',
   },
+  emerald: {
+    iconWrap: 'bg-emerald-500/15 border-emerald-500/30',
+    icon: 'text-emerald-400',
+    border: 'border-emerald-500/40',
+    highlight: 'bg-gradient-to-br from-emerald-500/10 to-transparent',
+  },
 };
 
 /** Pricing page — dark theme, wired to Stripe Checkout + Billing Portal. */
 export default function Pricing() {
+  const [isAnnual, setIsAnnual] = useState(false);
   const { data: subscription } = useSubscription();
   const startCheckout = useStartCheckout();
   const openPortal = useOpenBillingPortal();
@@ -107,9 +137,9 @@ export default function Pricing() {
   const currentTier = subscription?.tier ?? 'free';
 
   return (
-    <div className="max-w-5xl mx-auto text-white">
+    <div className="max-w-6xl mx-auto text-white">
       {/* Header */}
-      <div className="text-center mb-10">
+      <div className="text-center mb-12">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-grailiq-gold/30 bg-grailiq-gold/5 text-grailiq-gold-light text-[11px] font-semibold uppercase tracking-wider mb-4">
           <Sparkles className="h-3 w-3" />
           Pricing
@@ -119,6 +149,32 @@ export default function Pricing() {
           Start free. Upgrade when you outgrow it. All paid plans include a 14-day free trial and
           you can cancel anytime from the billing portal.
         </p>
+
+        {/* Annual toggle */}
+        <div className="mt-6 inline-flex items-center gap-3 px-4 py-2 rounded-full border border-white/10 bg-white/[0.02]">
+          <button
+            onClick={() => setIsAnnual(false)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+              !isAnnual
+                ? 'bg-grailiq-purple text-white'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Monthly
+          </button>
+          <button
+            onClick={() => setIsAnnual(true)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+              isAnnual
+                ? 'bg-grailiq-purple text-white'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Annual
+            <span className="text-xs font-semibold text-grailiq-gold-light ml-1.5">(save 2 months)</span>
+          </button>
+        </div>
+
         {subscription?.hasCustomer && (
           <button
             onClick={() => openPortal.mutate()}
@@ -136,12 +192,15 @@ export default function Pricing() {
       </div>
 
       {/* Tier cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         {tiers.map((tier) => {
           const Icon = tier.icon;
           const accents = accentClasses[tier.accent];
           const isCurrent = currentTier === tier.id;
+          const displayPrice = isAnnual ? tier.annualPrice : tier.monthlyPrice;
+          const priceId = isAnnual ? tier.priceIdAnnual : tier.priceIdMonthly;
           const loading = startCheckout.isPending && startCheckout.variables === tier.id;
+          const hasPrice = tier.id === 'free' || priceId;
 
           return (
             <div
@@ -157,45 +216,46 @@ export default function Pricing() {
                 </>
               )}
 
-              <div className="relative p-6">
+              <div className="relative p-5">
                 {tier.popular && (
-                  <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-grailiq-purple/15 border border-grailiq-purple/30 text-grailiq-purple-light mb-4">
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-grailiq-purple/15 border border-grailiq-purple/30 text-grailiq-purple-light mb-3">
                     <Sparkles className="h-3 w-3" />
-                    Most Popular
+                    Popular
                   </span>
                 )}
 
-                <div className="flex items-center gap-3 mb-3">
-                  <div className={`h-10 w-10 rounded-xl flex items-center justify-center border ${accents.iconWrap}`}>
-                    <Icon className={`h-5 w-5 ${accents.icon}`} />
+                <div className="flex items-center gap-2 mb-3">
+                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center border ${accents.iconWrap}`}>
+                    <Icon className={`h-4 w-4 ${accents.icon}`} />
                   </div>
-                  <h2 className="text-xl font-bold">{tier.name}</h2>
+                  <h2 className="text-lg font-bold">{tier.name}</h2>
                   {isCurrent && (
-                    <span className="ml-auto text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-400">
+                    <span className="ml-auto text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-400 whitespace-nowrap">
                       Current
                     </span>
                   )}
                 </div>
 
-                <p className="text-sm text-gray-400 mb-5">{tier.description}</p>
+                <p className="text-xs text-gray-400 mb-4 line-clamp-2">{tier.description}</p>
 
-                <div className="mb-6">
-                  <span className="text-4xl font-bold tabular-nums">{tier.price}</span>
-                  <span className="text-gray-500 text-sm ml-1">{tier.period}</span>
-                  {tier.annualPrice && (
-                    <p className="text-xs font-medium text-emerald-400 mt-1.5">{tier.annualPrice}</p>
+                <div className="mb-5">
+                  <span className="text-3xl font-bold tabular-nums">{displayPrice}</span>
+                  {tier.id !== 'free' && (
+                    <span className="text-gray-500 text-xs ml-1">{isAnnual ? '/year' : '/month'}</span>
                   )}
                 </div>
 
                 <button
-                  disabled={isCurrent || tier.id === 'free' || loading}
+                  disabled={!hasPrice || isCurrent || loading}
                   onClick={() => {
-                    if (tier.id === 'collector' || tier.id === 'investor') {
-                      startCheckout.mutate(tier.id);
+                    if (priceId && (tier.id === 'collector' || tier.id === 'investor' || tier.id === 'pro')) {
+                      startCheckout.mutate(tier.id as 'collector' | 'investor');
                     }
                   }}
-                  className={`w-full py-3 px-4 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
-                    isCurrent
+                  className={`w-full py-2.5 px-3 rounded-lg font-semibold text-xs transition-all flex items-center justify-center gap-2 ${
+                    !hasPrice
+                      ? 'bg-white/5 border border-white/10 text-gray-500 cursor-default'
+                      : isCurrent
                       ? 'bg-white/5 border border-white/10 text-gray-500 cursor-default'
                       : tier.popular
                       ? 'bg-gradient-to-r from-grailiq-purple to-grailiq-purple-light text-white shadow-lg shadow-grailiq-purple/30 hover:shadow-grailiq-purple/50 hover:brightness-110'
@@ -204,9 +264,11 @@ export default function Pricing() {
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-3 w-3 animate-spin" />
                       Redirecting...
                     </>
+                  ) : !hasPrice ? (
+                    'Coming soon'
                   ) : isCurrent ? (
                     'Current plan'
                   ) : (
@@ -214,10 +276,10 @@ export default function Pricing() {
                   )}
                 </button>
 
-                <ul className="mt-6 space-y-2.5">
+                <ul className="mt-4 space-y-1.5">
                   {tier.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2 text-sm text-gray-300">
-                      <Check className="h-4 w-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <li key={feature} className="flex items-start gap-2 text-xs text-gray-300">
+                      <Check className="h-3 w-3 text-emerald-400 mt-0.5 flex-shrink-0" />
                       <span>{feature}</span>
                     </li>
                   ))}
@@ -230,12 +292,11 @@ export default function Pricing() {
 
       {startCheckout.isError && (
         <p className="text-center text-sm text-rose-400 mt-6">
-          Checkout couldn't start — make sure the Collector / Investor prices are configured in
-          Stripe and STRIPE_PRICE_COLLECTOR / STRIPE_PRICE_INVESTOR are set in the API environment.
+          Checkout couldn't start — make sure prices are configured in Stripe and env vars are set.
         </p>
       )}
 
-      <p className="text-center text-xs text-gray-500 mt-10">
+      <p className="text-center text-xs text-gray-500 mt-12">
         All plans: SSL encryption, Supabase-backed auth, Stripe-secured payments. Cancel anytime.
       </p>
     </div>

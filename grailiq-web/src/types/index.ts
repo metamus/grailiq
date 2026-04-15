@@ -22,6 +22,7 @@ export interface Product {
   grailiqScore: string | null;
   investmentSignal: 'buy' | 'hold' | 'watch' | 'avoid' | null;
   signalRationale: string | null;
+  thesis: string | null;
   createdAt: string;
   updatedAt: string;
 }

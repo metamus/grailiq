@@ -18,6 +18,9 @@ import { watchlistRoutes } from './routes/watchlist.js';
 import { meRoutes } from './routes/me.js';
 import { eventsRoutes } from './routes/events.js';
 import { publicApiRoutes } from './routes/publicApi.js';
+import { dailyRoutes } from './routes/daily.js';
+import { backtestRoutes } from './routes/backtest.js';
+import { referralRoutes } from './routes/referrals.js';
 import { pool } from './config/database.js';
 import { redis } from './config/redis.js';
 import { initJobs } from './jobs/init.js';
@@ -72,6 +75,9 @@ async function buildApp() {
   await app.register(meRoutes, { prefix: '/api/v1' });
   await app.register(eventsRoutes, { prefix: '/api/v1' });
   await app.register(publicApiRoutes, { prefix: '/api/v1' });
+  await app.register(dailyRoutes, { prefix: '/api/v1' });
+  await app.register(backtestRoutes, { prefix: '/api/v1' });
+  await app.register(referralRoutes, { prefix: '/api/v1' });
 
   return app;
 }

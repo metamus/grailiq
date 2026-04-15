@@ -7,7 +7,9 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "scheme": "grailiq",
+    "primaryColor": "#F4C430",
     "newArchEnabled": true,
+    "keywords": ["grading", "pokemon", "trading cards", "portfolio", "valuation", "sealed products"],
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -17,7 +19,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.grailiq.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "LSApplicationCategoryType": "public.app-category.finance"
       }
     },
     "android": {
@@ -28,6 +31,7 @@
       "package": "com.grailiq.app",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
+      /* Note: App category is set in Google Play Console, not in app.json */
     },
     "plugins": [
       [

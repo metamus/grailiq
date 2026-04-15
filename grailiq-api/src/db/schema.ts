@@ -92,6 +92,7 @@ export const products = pgTable('products', {
   grailiqScore: decimal('grailiq_score', { precision: 3, scale: 1 }),
   investmentSignal: investmentSignalEnum('investment_signal'),
   signalRationale: text('signal_rationale'),
+  thesis: text('thesis'),
   scoreUpdatedAt: timestamp('score_updated_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -329,4 +330,45 @@ export const pushTokens = pgTable('push_tokens', {
 
 export const pushTokensRelations = relations(pushTokens, ({ one }) => ({
   user: one(users, { fields: [pushTokens.userId], references: [users.id] }),
+}));
+
+/**
+ * Daily Grails — features one curated product per day.
+ * Picked at 9am ET (14:00 UTC) by automated job.
+ * Selection criteria: max(grailiq_score) among products
+ * not featured in last 30 days, ties broken by highest 24h delta.
+ */
+export const dailyGrails = pgTable('daily_grails', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  productId: uuid('product_id')
+    .notNull()
+    .references(() => products.id, { onDelete: 'cascade' }),
+  featuredDate: timestamp('featured_date', { withTimezone: true }).notNull().unique(),
+  thesis: text('thesis'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const dailyGrailsRelations = relations(dailyGrails, ({ one }) => ({
+  product: one(products, { fields: [dailyGrails.productId], references: [products.id] }),
+}));
+
+/**
+ * Referral tracking — affiliate reward system
+ */
+export const referrals = pgTable('referrals', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  referrerUserId: uuid('referrer_user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  refereeUserId: uuid('referee_user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  status: varchar('status', { length: 20 }).notNull().default('pending'), // pending, completed
+  creditedAt: timestamp('credited_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const referralsRelations = relations(referrals, ({ one }) => ({
+  referrer: one(users, { fields: [referrals.referrerUserId], references: [users.id] }),
+  referee: one(users, { fields: [referrals.refereeUserId], references: [users.id] }),
 }));

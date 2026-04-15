@@ -8,6 +8,7 @@ import { PriceChart } from '@/components/charts/PriceChart';
 import { AddToPortfolioModal } from '@/components/modals/AddToPortfolioModal';
 import { CreateAlertModal } from '@/components/modals/CreateAlertModal';
 import { formatPrice, formatDate, formatPercentage, getSignalVariant } from '@/lib/utils';
+import { psaPopUrl, cgcPopUrl } from '@/lib/popLinks';
 import type { TimeRange } from '@/types';
 import {
   ArrowLeft,
@@ -23,6 +24,7 @@ import {
   Minus,
   Sparkles,
   Heart,
+  Share2,
 } from 'lucide-react';
 
 const typeLabels: Record<string, string> = {
@@ -85,6 +87,8 @@ export default function ProductDetail() {
   const { data: priceHistory } = usePriceHistory(id ?? '', timeRange);
   const [showPortfolioModal, setShowPortfolioModal] = useState(false);
   const [showAlertModal, setShowAlertModal] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [showPopMenu, setShowPopMenu] = useState(false);
   const { watching } = useIsWatching(id);
   const toggleWatch = useToggleWatch();
 
@@ -189,6 +193,12 @@ export default function ProductDetail() {
                   MSRP {formatPrice(product.msrp)}
                 </p>
               )}
+              {(product as any)?.communitySignals?.trendingRank && (product as any).communitySignals.trendingRank <= 10 && (
+                <div className="mt-3 inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-grailiq-gold/40 bg-grailiq-gold/10 text-xs font-semibold text-grailiq-gold-light">
+                  <span>🔥</span>
+                  <span>Trending #{(product as any).communitySignals.trendingRank} on r/pkmninvesting</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -213,6 +223,50 @@ export default function ProductDetail() {
               <Bell className="h-4 w-4" />
               Alert Me
             </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowShareMenu(!showShareMenu)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/15 bg-white/[0.03] text-sm font-semibold text-white hover:border-white/25 hover:bg-white/[0.06] transition-all"
+              >
+                <Share2 className="h-4 w-4" />
+                Share
+              </button>
+              {showShareMenu && (
+                <div className="absolute right-0 mt-2 w-48 rounded-xl border border-white/15 bg-grailiq-dark shadow-lg z-50">
+                  <button
+                    onClick={() => {
+                      const url = window.location.href;
+                      navigator.clipboard.writeText(url);
+                      setShowShareMenu(false);
+                    }}
+                    className="w-full px-4 py-2.5 text-sm text-white hover:bg-white/[0.06] transition-all text-left first:rounded-t-xl"
+                  >
+                    Copy Link
+                  </button>
+                  <button
+                    onClick={() => {
+                      const text = `Check out ${product?.name} on GrailIQ`;
+                      const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}`;
+                      window.open(url, '_blank');
+                      setShowShareMenu(false);
+                    }}
+                    className="w-full px-4 py-2.5 text-sm text-white hover:bg-white/[0.06] transition-all text-left"
+                  >
+                    Share on Twitter
+                  </button>
+                  <button
+                    onClick={() => {
+                      const url = `https://reddit.com/submit?url=${encodeURIComponent(window.location.href)}&title=${encodeURIComponent(product?.name || 'GrailIQ Product')}`;
+                      window.open(url, '_blank');
+                      setShowShareMenu(false);
+                    }}
+                    className="w-full px-4 py-2.5 text-sm text-white hover:bg-white/[0.06] transition-all text-left last:rounded-b-xl"
+                  >
+                    Share on Reddit
+                  </button>
+                </div>
+              )}
+            </div>
             <button
               onClick={() => setShowPortfolioModal(true)}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-grailiq-purple to-grailiq-purple-light text-sm font-semibold text-white shadow-lg shadow-grailiq-purple/30 transition-all hover:shadow-grailiq-purple/50 hover:brightness-110"
@@ -220,9 +274,53 @@ export default function ProductDetail() {
               <Plus className="h-4 w-4" />
               Add to Portfolio
             </button>
+            {product.setId && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowPopMenu(!showPopMenu)}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/15 bg-white/[0.03] text-sm font-semibold text-white hover:border-white/25 hover:bg-white/[0.06] transition-all"
+                >
+                  📊 Pop Report
+                </button>
+                {showPopMenu && (
+                  <div className="absolute right-0 mt-2 w-56 rounded-xl border border-white/15 bg-grailiq-dark shadow-lg z-50">
+                    <a
+                      href={psaPopUrl(product.setId, product.name)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setShowPopMenu(false)}
+                      className="w-full px-4 py-2.5 text-sm text-white hover:bg-white/[0.06] transition-all text-left first:rounded-t-xl block"
+                    >
+                      View PSA Pop Report
+                    </a>
+                    <a
+                      href={cgcPopUrl(product.setId, product.name)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setShowPopMenu(false)}
+                      className="w-full px-4 py-2.5 text-sm text-white hover:bg-white/[0.06] transition-all text-left last:rounded-b-xl block"
+                    >
+                      View CGC Pop Report
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Investment Thesis */}
+      {product.thesis && (
+        <div className="mb-6 rounded-2xl border border-white/5 bg-white/[0.02] p-5">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-3">
+            Investment Thesis
+          </h2>
+          <p className="text-base text-gray-200 leading-relaxed">
+            {product.thesis}
+          </p>
+        </div>
+      )}
 
       {/* Stats row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
@@ -334,31 +432,57 @@ export default function ProductDetail() {
         {/* Sidebar */}
         <div className="space-y-4">
           {/* Signal card */}
-          {product.investmentSignal && signal && (
-            <div
-              className={`relative overflow-hidden rounded-2xl border ${signal.border} bg-grailiq-dark p-5`}
-            >
+          <div className="space-y-3">
+            {product.investmentSignal && signal && (
               <div
-                className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${signal.accent} via-transparent to-transparent`}
-              />
-              <div className="relative">
-                <div className="flex items-center gap-2 mb-3">
-                  <Sparkles className={`h-4 w-4 ${signal.text}`} />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider ${signal.text}`}
-                  >
-                    Investment Signal
-                  </span>
+                className={`relative overflow-hidden rounded-2xl border ${signal.border} bg-grailiq-dark p-5`}
+              >
+                <div
+                  className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${signal.accent} via-transparent to-transparent`}
+                />
+                <div className="relative">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Sparkles className={`h-4 w-4 ${signal.text}`} />
+                    <span
+                      className={`text-[10px] font-bold uppercase tracking-wider ${signal.text}`}
+                    >
+                      Investment Signal
+                    </span>
+                  </div>
+                  <p className={`text-2xl font-bold ${signal.text}`}>{signalInfo.label}</p>
+                  {product.signalRationale && (
+                    <p className="text-sm text-gray-300 leading-relaxed mt-2">
+                      {product.signalRationale}
+                    </p>
+                  )}
                 </div>
-                <p className={`text-2xl font-bold ${signal.text}`}>{signalInfo.label}</p>
-                {product.signalRationale && (
-                  <p className="text-sm text-gray-300 leading-relaxed mt-2">
-                    {product.signalRationale}
-                  </p>
+              </div>
+            )}
+
+            {/* Rip vs Hold signal */}
+            {(product as any)?.ripHoldSignal && (
+              <div className="rounded-2xl border border-white/5 bg-grailiq-dark p-4 flex items-center gap-3">
+                {(product as any).ripHoldSignal === 'hold' && (
+                  <>
+                    <span className="text-2xl">🔐</span>
+                    <div className="flex-1">
+                      <p className="text-xs font-bold text-grailiq-gold-light uppercase tracking-wider">Hold Sealed</p>
+                      <p className="text-xs text-gray-400 mt-0.5">Value appreciates sealed</p>
+                    </div>
+                  </>
+                )}
+                {(product as any).ripHoldSignal === 'rip' && (
+                  <>
+                    <span className="text-2xl">📦</span>
+                    <div className="flex-1">
+                      <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Open It</p>
+                      <p className="text-xs text-gray-400 mt-0.5">Price near MSRP — singles may yield more</p>
+                    </div>
+                  </>
                 )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Product info */}
           <div className="rounded-2xl border border-white/5 bg-grailiq-dark p-5">

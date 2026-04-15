@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import axios from 'axios';
 import { ScoreRing } from '@/components/ScoreRing';
 import {
   Bell,
@@ -198,15 +199,32 @@ function PhoneMockup() {
             style={{
               opacity: displayValue > 0 ? 1 : 0,
               transform: displayValue > 0 ? 'translateY(0)' : 'translateY(16px)',
+              animation: displayValue > 0 ? 'pulse-bg 3s ease-in-out infinite' : 'none',
             }}
           >
             <div className="flex items-center gap-2">
               <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
               <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Strong Buy</p>
-              <span className="ml-auto text-[10px] tabular-nums text-emerald-400">92</span>
+              <span
+                className="ml-auto text-[10px] tabular-nums text-emerald-400"
+                style={{ animation: 'slide-up 400ms ease-out infinite 2s' }}
+              >
+                92
+              </span>
             </div>
             <p className="mt-1 text-[11px] font-medium text-white">Surging Sparks Booster Box</p>
             <p className="text-[10px] text-gray-400">Momentum + scarcity breakout</p>
+            <style>{`
+              @keyframes pulse-bg {
+                0%, 100% { background-color: rgba(5, 150, 105, 0.05); }
+                50% { background-color: rgba(5, 150, 105, 0.12); }
+              }
+              @keyframes slide-up {
+                0% { transform: translateY(0); }
+                50% { transform: translateY(-2px); }
+                100% { transform: translateY(0); }
+              }
+            `}</style>
           </div>
         </div>
       </div>
@@ -312,6 +330,108 @@ function FeatureCard({
   );
 }
 
+/* ─── Backtest Stats ───────────────────────────────────────── */
+function BacktestStats() {
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await axios.get('/api/v1/score-backtest');
+        setStats(response.data?.data);
+      } catch (err) {
+        console.error('Failed to fetch backtest stats:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  const show6mo = stats?.trailing_6mo?.insufficient_data !== true;
+  const show3mo = stats?.trailing_3mo?.insufficient_data !== true;
+
+  if (loading) {
+    return (
+      <section className="border-y border-white/5 py-12">
+        <div className="mx-auto max-w-5xl px-6 text-center">
+          <p className="text-gray-400">Loading backtest data...</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (!show6mo && !show3mo) {
+    return (
+      <section className="border-y border-white/5 py-12">
+        <div className="mx-auto max-w-5xl px-6 text-center">
+          <p className="text-sm text-grailiq-gold-light font-semibold mb-2">⏱️ Backtesting in Progress</p>
+          <p className="text-gray-400">Backtesting starts May 1 — launching soon</p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="border-y border-white/5 py-12">
+      <div className="mx-auto max-w-5xl px-6">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500 text-center mb-8">
+          Backtested BUY Signal Performance
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {show6mo && (
+            <div className="rounded-2xl border border-grailiq-gold/30 bg-gradient-to-br from-grailiq-gold/5 to-transparent p-6">
+              <p className="text-xs font-bold uppercase tracking-wider text-grailiq-gold-light mb-4">
+                Last 6 Months
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-2xl font-bold text-white">+{stats.trailing_6mo.avg_return_pct}%</p>
+                  <p className="text-xs text-gray-400 mt-1">Avg Return on BUY Signals</p>
+                </div>
+                <div className="flex gap-4">
+                  <div>
+                    <p className="text-xl font-bold text-emerald-400">{stats.trailing_6mo.win_rate_pct}%</p>
+                    <p className="text-xs text-gray-400 mt-1">Win Rate</p>
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-white">{stats.trailing_6mo.buys}</p>
+                    <p className="text-xs text-gray-400 mt-1">BUY Signals</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {show3mo && (
+            <div className="rounded-2xl border border-grailiq-purple/30 bg-gradient-to-br from-grailiq-purple/5 to-transparent p-6">
+              <p className="text-xs font-bold uppercase tracking-wider text-grailiq-purple-light mb-4">
+                Last 3 Months
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-2xl font-bold text-white">+{stats.trailing_3mo.avg_return_pct}%</p>
+                  <p className="text-xs text-gray-400 mt-1">Avg Return on BUY Signals</p>
+                </div>
+                <div className="flex gap-4">
+                  <div>
+                    <p className="text-xl font-bold text-emerald-400">{stats.trailing_3mo.win_rate_pct}%</p>
+                    <p className="text-xs text-gray-400 mt-1">Win Rate</p>
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-white">{stats.trailing_3mo.buys}</p>
+                    <p className="text-xs text-gray-400 mt-1">BUY Signals</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ─── FAQ Item ─────────────────────────────────────────────── */
 function FAQItem({ q, a, defaultOpen }: { q: string; a: string; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(!!defaultOpen);
@@ -390,6 +510,8 @@ const ROTATING_TAGLINES = [
   'Finally, a way to know if that ETB is worth $85 or $850.',
   'Every sealed product. Every retailer. One score.',
   'Nostalgia-grade intel, investor-grade data.',
+  'Buy the dip. Hold the grails. Know the difference.',
+  'Prices, not hype.',
 ];
 
 const demoScores = {
@@ -433,6 +555,48 @@ const demoScores = {
 export default function Landing() {
   const setIndex = useRotatingIndex(ROTATING_SETS.length);
   const taglineIndex = useRotatingIndex(ROTATING_TAGLINES.length, 4000);
+  const [stats, setStats] = useState({ products: '216+', sets: '173' });
+
+  useEffect(() => {
+    // Set OG meta tags
+    document.title = 'GrailIQ - Pokemon TCG Price Intelligence & Portfolio Analytics';
+    const setMeta = (name: string, content: string) => {
+      let meta = document.querySelector(`meta[property="${name}"]`) || document.querySelector(`meta[name="${name}"]`);
+      if (!meta) {
+        meta = document.createElement('meta');
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute('property' in meta ? 'property' : 'name', name);
+      meta.setAttribute('content', content);
+    };
+
+    setMeta('og:title', 'GrailIQ - Pokemon TCG Price Intelligence');
+    setMeta('og:description', 'Real-time price data, investment signals, and portfolio analytics for sealed Pokemon TCG products.');
+    setMeta('og:type', 'website');
+    setMeta('og:url', 'https://grailiq.com');
+    setMeta('og:image', 'https://grailiq.com/og-image.png');
+    setMeta('description', 'Real-time price data, investment signals, and portfolio analytics for sealed Pokemon TCG products.');
+  }, []);
+
+  useEffect(() => {
+    // Fetch real product and set counts from API
+    (async () => {
+      try {
+        const [productsRes, setsRes] = await Promise.all([
+          axios.get('/api/v1/products'),
+          axios.get('/api/v1/sets'),
+        ]);
+        const productCount = (productsRes.data.data || []).length;
+        const setCount = (setsRes.data.data || []).length;
+        setStats({
+          products: productCount > 0 ? productCount.toString() : '216+',
+          sets: setCount > 0 ? setCount.toString() : '173',
+        });
+      } catch {
+        // Fallback to defaults if API unavailable
+      }
+    })();
+  }, []);
 
   return (
     <div className="min-h-screen bg-grailiq-ink text-white">
@@ -583,6 +747,9 @@ export default function Landing() {
       {/* Live Ticker */}
       <LiveTicker />
 
+      {/* Backtested Performance Stats */}
+      <BacktestStats />
+
       {/* Data Sources Attribution */}
       <div className="border-y border-white/5 py-4">
         <div className="mx-auto flex max-w-5xl items-center justify-center gap-3 px-6 text-center">
@@ -604,8 +771,8 @@ export default function Landing() {
       <section className="border-b border-white/5 py-10">
         <div className="mx-auto grid max-w-5xl grid-cols-2 gap-8 px-6 md:grid-cols-4">
           {[
-            { value: '216+', label: 'Sealed Products' },
-            { value: '173', label: 'Sets Tracked' },
+            { value: stats.products, label: 'Sealed Products' },
+            { value: stats.sets, label: 'Sets Tracked' },
             { value: '5m', label: 'Hot Price Refresh' },
             { value: '24/7', label: 'Restock Monitoring' },
           ].map((s) => (

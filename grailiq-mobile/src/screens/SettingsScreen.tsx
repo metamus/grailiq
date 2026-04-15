@@ -85,7 +85,7 @@ export function SettingsScreen() {
               {capability?.label ?? 'Biometrics'} app lock
             </Text>
             <Text style={styles.rowHint}>
-              Require authentication to open GrailIQ after backgrounding.
+              Add {capability?.label ?? 'Biometrics'} if portfolio {'\u0024'}1,000+
             </Text>
           </View>
           <Switch

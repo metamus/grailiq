@@ -13,6 +13,7 @@ import './workers/scoreWorker.js';
 import './workers/notificationWorker.js';
 import './workers/digestWorker.js';
 import './workers/priceTargetWorker.js';
+import './workers/daily-grail-selection.js';
 
 /** Initialize the job system */
 export async function initJobs() {

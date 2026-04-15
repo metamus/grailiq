@@ -23,13 +23,31 @@ if (!stripe) {
 /**
  * Plan → Stripe Price ID map. Configure these in Railway env vars pointing at
  * prices you've created in your Stripe dashboard. The checkout endpoint reads
- * them by tier name.
+ * them by tier + billing period.
  *
  * Set in Railway:
- *   STRIPE_PRICE_COLLECTOR=price_xxxxx
- *   STRIPE_PRICE_INVESTOR=price_xxxxx
+ *   STRIPE_PRICE_COLLECTOR_MONTHLY=price_xxxxx
+ *   STRIPE_PRICE_COLLECTOR_ANNUAL=price_xxxxx
+ *   STRIPE_PRICE_INVESTOR_MONTHLY=price_xxxxx
+ *   STRIPE_PRICE_INVESTOR_ANNUAL=price_xxxxx
+ *   STRIPE_PRICE_PRO_MONTHLY=price_xxxxx
+ *   STRIPE_PRICE_PRO_ANNUAL=price_xxxxx
+ *
+ * Falls back to legacy env vars if new ones not set:
+ *   STRIPE_PRICE_COLLECTOR=price_xxxxx (monthly)
+ *   STRIPE_PRICE_INVESTOR=price_xxxxx (monthly)
  */
 export const STRIPE_PRICE_IDS: Record<string, string | undefined> = {
+  // Collector
+  'collector_monthly': process.env.STRIPE_PRICE_COLLECTOR_MONTHLY || process.env.STRIPE_PRICE_COLLECTOR,
+  'collector_annual': process.env.STRIPE_PRICE_COLLECTOR_ANNUAL,
+  // Investor
+  'investor_monthly': process.env.STRIPE_PRICE_INVESTOR_MONTHLY || process.env.STRIPE_PRICE_INVESTOR,
+  'investor_annual': process.env.STRIPE_PRICE_INVESTOR_ANNUAL,
+  // Pro (restock-only)
+  'pro_monthly': process.env.STRIPE_PRICE_PRO_MONTHLY,
+  'pro_annual': process.env.STRIPE_PRICE_PRO_ANNUAL,
+  // Legacy fallbacks (for backward compat)
   collector: process.env.STRIPE_PRICE_COLLECTOR,
   investor: process.env.STRIPE_PRICE_INVESTOR,
 };

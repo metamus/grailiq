@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useSet } from '@/hooks/useSets';
 import { Spinner } from '@/components/ui/Spinner';
@@ -5,6 +6,7 @@ import { ScoreRing } from '@/components/ScoreRing';
 import { Sparkline } from '@/components/charts/Sparkline';
 import { generateTrend, signalToBias, signalToColor } from '@/lib/sparkData';
 import { formatDate, formatPrice } from '@/lib/utils';
+import { psaPopUrl, cgcPopUrl } from '@/lib/popLinks';
 import {
   ArrowLeft,
   Calendar,
@@ -13,6 +15,7 @@ import {
   ChevronRight,
   Sparkles,
   Scale,
+  ExternalLink,
 } from 'lucide-react';
 
 const typeLabels: Record<string, string> = {
@@ -52,6 +55,7 @@ const signalBadge: Record<string, string> = {
 export default function SetDetail() {
   const { id } = useParams<{ id: string }>();
   const { data: set, isLoading } = useSet(id ?? '');
+  const [showPopMenu, setShowPopMenu] = useState(false);
 
   if (isLoading) {
     return (
@@ -128,6 +132,51 @@ export default function SetDetail() {
           </span>
         </div>
       </div>
+
+      {/* Pop reports — view PSA/CGC population data */}
+      {set.code && (
+        <div className="mb-6 rounded-2xl border border-white/5 bg-grailiq-dark p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-white">View Pop Reports</h3>
+              <p className="text-xs text-gray-400 mt-1">Population data from PSA and CGC</p>
+            </div>
+            <div className="relative">
+              <button
+                onClick={() => setShowPopMenu(!showPopMenu)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-grailiq-gold/30 bg-grailiq-gold/5 text-xs font-semibold text-grailiq-gold-light hover:bg-grailiq-gold/15 transition-all"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Open
+              </button>
+              {showPopMenu && (
+                <div className="absolute right-0 mt-2 w-56 rounded-xl border border-white/15 bg-grailiq-dark shadow-lg z-50">
+                  <a
+                    href={psaPopUrl(set.code, set.name)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setShowPopMenu(false)}
+                    className="flex w-full px-4 py-2.5 text-sm text-white hover:bg-white/[0.06] transition-all text-left first:rounded-t-xl items-center gap-2"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5 text-gray-500" />
+                    PSA Pop Report
+                  </a>
+                  <a
+                    href={cgcPopUrl(set.code, set.name)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setShowPopMenu(false)}
+                    className="flex w-full px-4 py-2.5 text-sm text-white hover:bg-white/[0.06] transition-all text-left last:rounded-b-xl items-center gap-2"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5 text-gray-500" />
+                    CGC Pop Report
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Products list */}
       <div className="rounded-2xl border border-white/5 bg-grailiq-dark overflow-hidden">
