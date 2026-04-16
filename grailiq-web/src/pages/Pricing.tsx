@@ -309,6 +309,79 @@ export default function Pricing() {
         </p>
       )}
 
+      {/* Comparison Table */}
+      <div className="mt-16 mb-12">
+        <h3 className="text-center text-xl font-bold text-white mb-8">Feature Comparison</h3>
+        <div className="overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-white/10 bg-white/[0.02]">
+                <th className="px-4 py-3 text-left font-semibold text-white">Feature</th>
+                <th className="px-4 py-3 text-center font-semibold text-gray-400">Free</th>
+                <th className="px-4 py-3 text-center font-semibold text-white">Collector</th>
+                <th className="px-4 py-3 text-center font-semibold text-white">Investor</th>
+                <th className="px-4 py-3 text-center font-semibold text-gray-400">Pro</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { feature: 'Set browsing', free: true, collector: true, investor: true, pro: false },
+                { feature: 'GrailIQ Score', free: true, collector: true, investor: true, pro: false },
+                { feature: 'Portfolio tracking', free: '10 items', collector: 'Unlimited', investor: 'Unlimited', pro: false },
+                { feature: 'Restock alerts', free: '3 alerts', collector: 'Unlimited (email)', investor: 'Unlimited (push+email)', pro: 'Unlimited (push)' },
+                { feature: 'Watchlist', free: '5 items', collector: 'Unlimited', investor: 'Unlimited', pro: 'Unlimited' },
+                { feature: 'Weekly digest', free: false, collector: false, investor: true, pro: false },
+                { feature: 'API access', free: false, collector: false, investor: true, pro: false },
+                { feature: 'Bulk export (CSV/PDF)', free: false, collector: 'CSV', investor: 'CSV + PDF', pro: false },
+                { feature: 'Price target alerts', free: false, collector: true, investor: true, pro: true },
+                { feature: 'Real-time score updates', free: 'Daily', collector: 'Daily', investor: 'Hourly', pro: 'Hourly' },
+                { feature: 'Priority support', free: false, collector: false, investor: true, pro: true },
+              ].map((row, idx) => (
+                <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                  <td className="px-4 py-3 font-medium text-gray-300">{row.feature}</td>
+                  <td className="px-4 py-3 text-center">
+                    {row.free === true ? (
+                      <Check className="h-4 w-4 text-emerald-400 mx-auto" />
+                    ) : row.free === false ? (
+                      <span className="text-gray-600">—</span>
+                    ) : (
+                      <span className="text-xs text-gray-400">{row.free}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {row.collector === true ? (
+                      <Check className="h-4 w-4 text-emerald-400 mx-auto" />
+                    ) : row.collector === false ? (
+                      <span className="text-gray-600">—</span>
+                    ) : (
+                      <span className="text-xs text-gray-300">{row.collector}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {row.investor === true ? (
+                      <Check className="h-4 w-4 text-emerald-400 mx-auto" />
+                    ) : row.investor === false ? (
+                      <span className="text-gray-600">—</span>
+                    ) : (
+                      <span className="text-xs text-gray-300 font-semibold">{row.investor}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {row.pro === true ? (
+                      <Check className="h-4 w-4 text-emerald-400 mx-auto" />
+                    ) : row.pro === false ? (
+                      <span className="text-gray-600">—</span>
+                    ) : (
+                      <span className="text-xs text-gray-400">{row.pro}</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div className="mt-12 space-y-4 max-w-3xl mx-auto">
         <p className="text-center text-xs text-gray-500">
           All plans: SSL encryption, Supabase-backed auth, Stripe-secured payments. Cancel anytime.

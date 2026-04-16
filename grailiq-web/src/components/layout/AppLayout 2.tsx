@@ -6,7 +6,6 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { supabase } from '@/lib/supabase';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { CommandPalette } from '@/components/CommandPalette';
-import { FeedbackButton } from '@/components/FeedbackButton';
 
 const navItems = [
   { to: '/app', icon: LayoutDashboard, label: 'Dashboard' },
@@ -157,7 +156,6 @@ export function AppLayout() {
           Sign Out
         </button>
       </nav>
-      <FeedbackButton />
     </div>
   );
 }

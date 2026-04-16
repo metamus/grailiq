@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSets } from '@/hooks/useSets';
 import { useProducts } from '@/hooks/useProducts';
@@ -120,15 +120,6 @@ export default function Dashboard() {
   );
   const heroTrend = generateTrend('dashboard-hero', heroBias, 40);
 
-  // Fetch featured daily grail
-  const [dailyGrail, setDailyGrail] = useState<any | null>(null);
-  useEffect(() => {
-    fetch('/api/v1/daily')
-      .then((r) => r.json())
-      .then((d) => setDailyGrail(d.product || null))
-      .catch(() => setDailyGrail(null));
-  }, []);
-
   return (
     <div className="text-white">
       {/* Hero header */}
@@ -201,42 +192,6 @@ export default function Dashboard() {
           accent="gold"
         />
       </div>
-
-      {/* Featured Grail of the Day */}
-      {dailyGrail && (
-        <Link
-          to={`/app/products/${dailyGrail.id}`}
-          className="group block rounded-2xl border border-grailiq-gold/30 bg-gradient-to-br from-grailiq-gold/10 to-grailiq-purple/5 p-6 mb-6 hover:border-grailiq-gold/50 hover:from-grailiq-gold/15 transition-all overflow-hidden"
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-grailiq-gold/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          <div className="relative">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-grailiq-gold" />
-                <p className="text-xs font-bold uppercase tracking-widest text-grailiq-gold">Featured Grail</p>
-              </div>
-              <ArrowRight className="h-4 w-4 text-grailiq-gold opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
-            </div>
-            <h3 className="text-2xl font-display font-bold text-white mb-2">{dailyGrail.name}</h3>
-            <div className="flex items-center gap-4 mb-4">
-              {dailyGrail.grailiqScore && (
-                <ScoreRing score={dailyGrail.grailiqScore} size={56} />
-              )}
-              {dailyGrail.investmentSignal && (
-                <span className={`text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${signalBadge[dailyGrail.investmentSignal]}`}>
-                  {dailyGrail.investmentSignal}
-                </span>
-              )}
-              {dailyGrail.price && (
-                <span className="text-sm font-semibold text-grailiq-gold">{formatPrice(dailyGrail.price)}</span>
-              )}
-            </div>
-            <p className="text-sm text-gray-400">
-              {dailyGrail.type} · {dailyGrail.rarity ? `Rarity: ${dailyGrail.rarity}` : 'Check pricing'}
-            </p>
-          </div>
-        </Link>
-      )}
 
       {/* Start Here — Get instant value */}
       <div className="rounded-2xl border border-grailiq-gold/30 bg-gradient-to-br from-grailiq-gold/5 to-transparent p-6 mb-6">

@@ -9,7 +9,14 @@
     "scheme": "grailiq",
     "primaryColor": "#F4C430",
     "newArchEnabled": true,
-    "keywords": ["grading", "pokemon", "trading cards", "portfolio", "valuation", "sealed products"],
+    "keywords": [
+      "grading",
+      "pokemon",
+      "trading cards",
+      "portfolio",
+      "valuation",
+      "sealed products"
+    ],
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -36,7 +43,6 @@
       "package": "com.grailiq.app",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
-      /* Note: App category is set in Google Play Console, not in app.json */
     },
     "plugins": [
       [
@@ -56,8 +62,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": ""
+        "projectId": "ed41acc9-0724-48f2-ae35-5f60c587c137"
       }
-    }
+    },
+    "owner": "metamus"
   }
 }

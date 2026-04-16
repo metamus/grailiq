@@ -22,6 +22,7 @@ import { dailyRoutes } from './routes/daily.js';
 import { backtestRoutes } from './routes/backtest.js';
 import { referralRoutes } from './routes/referrals.js';
 import { statsRoutes } from './routes/stats.js';
+import { feedbackRoutes } from './routes/feedback.js';
 import { pool } from './config/database.js';
 import { redis } from './config/redis.js';
 import { initJobs } from './jobs/init.js';
@@ -80,6 +81,7 @@ async function buildApp() {
   await app.register(backtestRoutes, { prefix: '/api/v1' });
   await app.register(referralRoutes, { prefix: '/api/v1' });
   await app.register(statsRoutes, { prefix: '/api/v1' });
+  await app.register(feedbackRoutes, { prefix: '/api/v1' });
 
   return app;
 }

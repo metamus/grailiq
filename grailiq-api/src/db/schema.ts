@@ -371,3 +371,16 @@ export const referralsRelations = relations(referrals, ({ one }) => ({
   referrer: one(users, { fields: [referrals.referrerUserId], references: [users.id] }),
   referee: one(users, { fields: [referrals.refereeUserId], references: [users.id] }),
 }));
+
+// ──────────────────────────────────────────────
+// Feedback
+// ──────────────────────────────────────────────
+
+export const feedbackTable = pgTable('feedback', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  rating: integer('rating'), // 1-5
+  message: text('message').notNull(),
+  page: varchar('page', { length: 255 }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});

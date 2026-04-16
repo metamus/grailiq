@@ -11,10 +11,31 @@ import { db } from '../../config/database.js';
 import { users } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { resolvePrefs, shouldSend } from '../../lib/notificationPrefs.js';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
 
 /** Minimal HTML escape to keep user-supplied names from breaking templates. */
 function escape(s: string): string {
   return s.replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c]!));
+}
+
+/** Simple template variable replacement. */
+function renderTemplate(template: string, variables: Record<string, string | boolean>): string {
+  let html = template;
+  for (const [key, value] of Object.entries(variables)) {
+    if (typeof value === 'boolean') {
+      // Conditional: {{#key}}content{{/key}} or {{^key}}content{{/key}}
+      const ifPattern = new RegExp(`{{#${key}}}([\\s\\S]*?){{/${key}}}`, 'g');
+      const unlessPattern = new RegExp(`{{\\^${key}}}([\\s\\S]*?){{/${key}}}`, 'g');
+      html = html.replace(ifPattern, value ? '$1' : '');
+      html = html.replace(unlessPattern, value ? '' : '$1');
+    } else {
+      // Simple replacement: {{key}}
+      html = html.replace(new RegExp(`{{${key}}}`, 'g'), String(value));
+    }
+  }
+  return html;
 }
 
 if (!redis) {
@@ -53,6 +74,9 @@ interface PriceTargetNotificationPayload {
 
 type NotificationPayload = RestockNotificationPayload | PriceTargetNotificationPayload;
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 const retailerLabels: Record<string, string> = {
   pokemon_center: 'Pokemon Center',
   amazon: 'Amazon',
@@ -60,6 +84,14 @@ const retailerLabels: Record<string, string> = {
   walmart: 'Walmart',
   best_buy: 'Best Buy',
 };
+
+// Load email templates
+let restockAlertTemplate: string | null = null;
+try {
+  restockAlertTemplate = readFileSync(resolve(__dirname, '../../emails/restock-alert.html'), 'utf-8');
+} catch (err) {
+  logger.warn('Failed to load restock-alert.html template');
+}
 
 /**
  * Send an email notification via Resend.
@@ -104,57 +136,48 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
 
 /** Build a restock notification email */
 function buildRestockEmail(payload: RestockNotificationPayload): { subject: string; html: string } {
-  const name = payload.displayName || 'Collector';
   const retailer = retailerLabels[payload.retailer] || payload.retailer;
   const priceStr = payload.price ? `$${payload.price.toFixed(2)}` : 'Check retailer';
+  const subject = `🔥 ${payload.productName} is back in stock at ${retailer}!`;
 
-  const subject = `🔔 ${payload.productName} is back in stock at ${retailer}!`;
+  // Use template if available, otherwise fallback
+  if (restockAlertTemplate) {
+    const html = renderTemplate(restockAlertTemplate, {
+      productName: escape(payload.productName),
+      setName: escape(payload.productType || ''),
+      score: payload.price ? priceStr : '',
+      signal: '',
+      currentPrice: priceStr,
+      retailer: escape(retailer),
+      retailerUrl: escape(payload.url || ''),
+      dashboardUrl: escape(`https://grailiq.com/app/products/${payload.productId}`),
+      unsubscribeUrl: escape('https://grailiq.com/app/settings/notifications'),
+      productImage: '',
+    });
+    return { subject, html };
+  }
 
+  // Fallback to simple HTML
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
       <div style="text-align: center; margin-bottom: 24px;">
-        <h1 style="color: #7F77DD; font-size: 28px; margin: 0;">GrailIQ</h1>
+        <h1 style="color: #D4AF37; font-size: 28px; margin: 0;">GrailIQ</h1>
         <p style="color: #9CA3AF; font-size: 13px; margin-top: 4px;">Price Intelligence for Pokemon TCG</p>
       </div>
-
-      <div style="background: linear-gradient(135deg, #F59E0B15, #D9770615); border: 1px solid #F59E0B30; border-radius: 12px; padding: 24px; margin-bottom: 20px;">
-        <p style="color: #92400E; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 8px 0;">
-          🔔 Restock Alert
-        </p>
-        <h2 style="color: #1F2937; font-size: 20px; margin: 0 0 12px 0;">${payload.productName}</h2>
+      <div style="background: linear-gradient(135deg, #D4AF3715, #A855F715); border: 1px solid #D4AF3730; border-radius: 12px; padding: 24px; margin-bottom: 20px;">
+        <p style="color: #D4AF37; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 8px 0;">🔥 Back In Stock</p>
+        <h2 style="color: #F9FAFB; font-size: 20px; margin: 0 0 12px 0;">${escape(payload.productName)}</h2>
         <table style="width: 100%; border-collapse: collapse;">
-          <tr>
-            <td style="color: #6B7280; font-size: 13px; padding: 4px 0;">Retailer</td>
-            <td style="color: #1F2937; font-size: 13px; font-weight: 600; text-align: right;">${retailer}</td>
-          </tr>
-          <tr>
-            <td style="color: #6B7280; font-size: 13px; padding: 4px 0;">Price</td>
-            <td style="color: #059669; font-size: 13px; font-weight: 600; text-align: right;">${priceStr}</td>
-          </tr>
+          <tr><td style="color: #9CA3AF; font-size: 13px; padding: 4px 0;">Retailer</td><td style="color: #F9FAFB; font-size: 13px; font-weight: 600; text-align: right;">${escape(retailer)}</td></tr>
+          <tr><td style="color: #9CA3AF; font-size: 13px; padding: 4px 0;">Price</td><td style="color: #D4AF37; font-size: 13px; font-weight: 600; text-align: right;">${priceStr}</td></tr>
         </table>
       </div>
-
-      ${payload.url ? `
-      <div style="text-align: center; margin-bottom: 24px;">
-        <a href="${payload.url}" style="display: inline-block; background: #7F77DD; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
-          View on ${retailer} →
-        </a>
-      </div>
-      ` : ''}
-
-      <p style="color: #6B7280; font-size: 13px; line-height: 1.6;">
-        Hey ${name}, the product you're watching is available again. Popular items sell out fast, so don't wait too long!
-      </p>
-
-      <hr style="border: none; border-top: 1px solid #F3F4F6; margin: 24px 0;" />
-
-      <p style="color: #9CA3AF; font-size: 11px; text-align: center;">
-        You're receiving this because you set a restock alert on GrailIQ.
-        <br />Manage your alerts at <a href="https://grailiq.com/alerts" style="color: #7F77DD;">grailiq.com/alerts</a>
-      </p>
+      ${payload.url ? `<div style="text-align: center; margin-bottom: 24px;"><a href="${escape(payload.url)}" style="display: inline-block; background: #D4AF37; color: #0B0B18; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">Buy at ${escape(retailer)} →</a></div>` : ''}
+      <p style="color: #D1D5DB; font-size: 13px; line-height: 1.6;">The product you're tracking just came back in stock. Popular items move fast — don't miss out!</p>
+      <hr style="border: none; border-top: 1px solid #2C2C3C; margin: 24px 0;" />
+      <p style="color: #6B7280; font-size: 11px; text-align: center;">You're receiving this because you set a restock alert on GrailIQ.<br /><a href="https://grailiq.com/app/settings/notifications" style="color: #D4AF37;">Manage your alerts</a></p>
     </div>
   `;
-
   return { subject, html };
 }
 

@@ -5,12 +5,26 @@ import { db } from '../../config/database.js';
 import { users, products, priceHistory, portfolioItems } from '../../db/schema.js';
 import { env } from '../../config/env.js';
 import { logger } from '../../lib/logger.js';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
 
 if (!redis) {
   logger.info('Redis not available — digest worker disabled');
 }
 
 const connection = redis ? { host: redis.options.host, port: redis.options.port } : undefined;
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load email template
+let weeklyDigestTemplate: string | null = null;
+try {
+  weeklyDigestTemplate = readFileSync(resolve(__dirname, '../../emails/weekly-digest.html'), 'utf-8');
+} catch (err) {
+  logger.warn('Failed to load weekly-digest.html template');
+}
 
 /**
  * Weekly digest worker.
@@ -137,10 +151,29 @@ async function buildDigestForUser(
 
 function renderDigestHtml(ctx: DigestContext): { subject: string; html: string } {
   const name = ctx.user.displayName ?? 'Collector';
-  const weekStart = new Date();
-  weekStart.setDate(weekStart.getDate() - 7);
   const subject = `📈 GrailIQ Weekly — top movers + your portfolio snapshot`;
 
+  if (weeklyDigestTemplate) {
+    const topMoversData = ctx.scoreMovers.map(m => ({
+      name: escape(m.name),
+      score: m.score.toFixed(1),
+      signal: escape(m.signal || 'watch'),
+      price: m.currentPrice ? `$${m.currentPrice.toFixed(2)}` : '—',
+    }));
+
+    const html = renderTemplate(weeklyDigestTemplate, {
+      userName: escape(name),
+      topMovers: topMoversData,
+      totalPortfolioValue: ctx.portfolioHoldings > 0 ? ctx.portfolioValue.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '',
+      weeklyChangePositive: ctx.portfolioWeekDelta >= 0,
+      absWeeklyChange: `$${Math.abs(ctx.portfolioWeekDelta).toFixed(2)}`,
+      dashboardUrl: 'https://grailiq.com/app',
+      restocksThisWeek: 0,
+    });
+    return { subject, html };
+  }
+
+  // Fallback to simple HTML
   const moverRow = (m: MoverRow) => `
     <tr>
       <td style="padding:10px 0;border-bottom:1px solid #1F2937;">
@@ -150,7 +183,7 @@ function renderDigestHtml(ctx: DigestContext): { subject: string; html: string }
         </p>
       </td>
       <td style="padding:10px 0;border-bottom:1px solid #1F2937;text-align:right;">
-        <p style="margin:0;font-weight:700;color:#7F77DD;font-size:14px;">
+        <p style="margin:0;font-weight:700;color:#D4AF37;font-size:14px;">
           ${m.score.toFixed(1)}
         </p>
         ${
@@ -164,49 +197,38 @@ function renderDigestHtml(ctx: DigestContext): { subject: string; html: string }
   const html = `<!doctype html><html><body style="margin:0;padding:0;background:#0B0B18;color:#F9FAFB;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   <div style="max-width:600px;margin:0 auto;padding:32px 24px;">
     <div style="margin-bottom:28px;">
-      <h1 style="margin:0;font-size:28px;color:#F9FAFB;">Grail<span style="color:#7F77DD;">IQ</span></h1>
-      <p style="margin:4px 0 0;color:#9CA3AF;font-size:13px;">Weekly Market Intelligence · ${weekStart.toISOString().slice(0, 10)} → ${new Date().toISOString().slice(0, 10)}</p>
+      <h1 style="margin:0;font-size:28px;color:#F9FAFB;">Grail<span style="color:#D4AF37;font-style:italic;">IQ</span></h1>
+      <p style="margin:4px 0 0;color:#9CA3AF;font-size:13px;">Weekly Market Intelligence</p>
     </div>
-
     <p style="font-size:15px;color:#D1D5DB;line-height:1.55;">
       Morning, ${escape(name)}. Here's what moved this week across sealed Pokémon.
     </p>
-
     ${ctx.portfolioHoldings > 0 ? `
-    <div style="margin-top:24px;padding:20px;background:linear-gradient(135deg,rgba(127,119,221,0.12),rgba(127,119,221,0.02));border:1px solid rgba(127,119,221,0.3);border-radius:14px;">
-      <p style="margin:0;font-size:11px;font-weight:700;color:#9B94E8;text-transform:uppercase;letter-spacing:0.08em;">
-        Your Portfolio
-      </p>
-      <p style="margin:6px 0 2px;font-size:30px;font-weight:700;color:#F9FAFB;">
-        $${ctx.portfolioValue.toLocaleString('en-US', { maximumFractionDigits: 2 })}
-      </p>
+    <div style="margin-top:24px;padding:20px;background:linear-gradient(135deg,rgba(212,175,55,0.12),rgba(212,175,55,0.02));border:1px solid rgba(212,175,55,0.3);border-radius:14px;">
+      <p style="margin:0;font-size:11px;font-weight:700;color:#D4AF37;text-transform:uppercase;letter-spacing:0.08em;">Your Portfolio</p>
+      <p style="margin:6px 0 2px;font-size:30px;font-weight:700;color:#F9FAFB;">$${ctx.portfolioValue.toLocaleString('en-US', { maximumFractionDigits: 2 })}</p>
       <p style="margin:0;font-size:13px;color:${ctx.portfolioWeekDelta >= 0 ? '#22C55E' : '#EF4444'};font-weight:600;">
         ${ctx.portfolioWeekDelta >= 0 ? '▲' : '▼'} $${Math.abs(ctx.portfolioWeekDelta).toFixed(2)} unrealized
         <span style="color:#6B7280;font-weight:400;">· ${ctx.portfolioHoldings} holdings</span>
       </p>
     </div>` : ''}
-
     <h2 style="margin:28px 0 12px;font-size:16px;color:#F9FAFB;">🔥 Top GrailIQ Scores</h2>
     <table style="width:100%;border-collapse:collapse;">
       ${ctx.scoreMovers.map(moverRow).join('')}
     </table>
-
     <h2 style="margin:28px 0 12px;font-size:16px;color:#F9FAFB;">🟢 Current Buy Signals</h2>
     <table style="width:100%;border-collapse:collapse;">
       ${ctx.topBuys.map(moverRow).join('')}
     </table>
-
     <div style="margin-top:32px;padding:16px;border-radius:12px;background:#12121F;border:1px solid #1F2937;">
       <p style="margin:0;font-size:13px;color:#D1D5DB;line-height:1.5;">
-        <strong style="color:#F4C430;">Investor tier perk:</strong>
-        This digest ships weekly with deeper breakdowns. Forward it to another
-        Pokémon investor — if they sign up, you both get a free month.
+        <strong style="color:#D4AF37;">Investor tier perk:</strong>
+        This digest ships weekly with deeper breakdowns. Forward it to another Pokémon investor — if they sign up, you both get a free month.
       </p>
     </div>
-
     <p style="margin:28px 0 0;font-size:12px;color:#6B7280;text-align:center;">
       GrailIQ · Price intelligence for sealed Pokémon TCG<br/>
-      <a href="https://grailiq.com/app" style="color:#7F77DD;text-decoration:none;">Open app →</a>
+      <a href="https://grailiq.com/app" style="color:#D4AF37;text-decoration:none;">Open app →</a>
     </p>
   </div>
 </body></html>`;
@@ -216,6 +238,42 @@ function renderDigestHtml(ctx: DigestContext): { subject: string; html: string }
 
 function escape(s: string): string {
   return s.replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c]!));
+}
+
+function renderTemplate(template: string, variables: Record<string, any>): string {
+  let html = template;
+
+  // Handle arrays (e.g., {{#topMovers}}...{{/topMovers}})
+  const arrayPattern = /{{#(\w+)}}([\s\S]*?){{\/\1}}/g;
+  html = html.replace(arrayPattern, (match, key, content) => {
+    const arr = variables[key];
+    if (!Array.isArray(arr) || arr.length === 0) return '';
+
+    return arr.map((item: any) => {
+      let itemHtml = content;
+      if (typeof item === 'object') {
+        for (const [k, v] of Object.entries(item)) {
+          itemHtml = itemHtml.replace(new RegExp(`{{${k}}}`, 'g'), String(v));
+        }
+      }
+      return itemHtml;
+    }).join('');
+  });
+
+  // Handle conditionals
+  const condPattern = /{{#(\w+)}}([\s\S]*?){{\/\1}}/g;
+  html = html.replace(condPattern, (match, key, content) => {
+    return variables[key] ? content : '';
+  });
+
+  // Handle simple replacements
+  for (const [key, value] of Object.entries(variables)) {
+    if (typeof value !== 'object') {
+      html = html.replace(new RegExp(`{{${key}}}`, 'g'), String(value || ''));
+    }
+  }
+
+  return html;
 }
 
 async function sendDigest(email: string, subject: string, html: string): Promise<boolean> {

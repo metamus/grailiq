@@ -1,8 +1,37 @@
-# GrailIQ — When You're Back
+# GrailIQ — Ship Status
 
-Only what genuinely needs you. Everything else is shipped or scaffolded.
+## ✅ SHIPPED (Code-Only Polish, April 15)
+
+1. **Email Templates** — Beautiful, responsive HTML templates for restock alerts + weekly digest with gold/purple brand theming, inline CSS for Outlook compatibility
+   - `grailiq-api/src/emails/restock-alert.html` — Product image, pricing, CTA buttons, GrailIQ branding
+   - `grailiq-api/src/emails/weekly-digest.html` — Portfolio stats, top movers, featured grail, investor perks
+   - Updated `notificationWorker.ts` + `digestWorker.ts` to load and render templates with variable substitution
+
+2. **Feedback Widget** — Global floating button + panel component mounted in AppLayout
+   - `grailiq-web/src/components/FeedbackButton.tsx` — Emoji ratings, message textarea, real-time submission
+   - `grailiq-api/src/routes/feedback.ts` — POST `/api/v1/feedback` endpoint (201 response)
+   - `grailiq-api/src/db/schema.ts` — New `feedbackTable` with user_id, rating, message, page, created_at
+   - `grailiq-api/src/db/migrations/0012_feedback.sql` — Indexes on creation date + user_id
+
+3. **Pricing Comparison Table** — Feature matrix below tier cards on `/app/pricing`
+   - 11 features × 5 tiers (Free, Collector, Investor, Pro, future tiers)
+   - Green checkmarks, gray dashes, feature-specific text (e.g., "10 items", "Unlimited")
+   - Mobile-responsive with overflow scrolling on small screens
+
+4. **Dashboard: Featured Grail of the Day** — Hero card at top of dashboard
+   - Fetches `/api/v1/daily` endpoint (already exists)
+   - Shows product name, GrailIQ Score (ScoreRing), signal badge, current price
+   - Link to full product detail page with hover effects
+
+5. **Privacy + Terms** — Already excellent legal-quality text (NOT modified; already complete)
+   - Privacy.tsx covers GDPR/CCPA, data processors (Supabase, Stripe, Resend, Expo, Cloudflare), retention policies
+   - Terms.tsx covers disclaimer (not investment advice), subscription auto-renew, acceptable use, liability cap
 
 ---
+
+## 🚀 Remaining Tasks (For You)
+
+### Mobile App (highest priority)
 
 ## 🚀 Deploy the latest (3 min)
 
